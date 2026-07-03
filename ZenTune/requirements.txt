@@ -1,0 +1,4 @@
+pyzmq
+textual
+textual-plotext
+zenmaster>=0.6.0
