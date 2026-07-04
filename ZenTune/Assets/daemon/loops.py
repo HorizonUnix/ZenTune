@@ -201,7 +201,7 @@ class LoopsMixin:
         self._suspend_thread = threading.Thread(
             target=self._suspend_monitor_body,
             daemon=True,
-            name="uxtu-suspend-monitor",
+            name="zentune-suspend-monitor",
         )
         self._suspend_thread.start()
         log.info("Watching for suspend/resume.")
@@ -218,7 +218,7 @@ class LoopsMixin:
             target=self._monitor_body,
             args=(args, mode),
             daemon=True,
-            name="uxtu-power-monitor",
+            name="zentune-power-monitor",
         )
         self._monitor_thread.start()
         log.info("Watching for AC/battery changes.")

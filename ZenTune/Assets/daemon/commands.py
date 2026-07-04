@@ -91,7 +91,7 @@ class CommandsMixin:
             target=self._loop_body,
             args=(args, mode, interval, automation),
             daemon=True,
-            name="uxtu-reapply",
+            name="zentune-reapply",
         )
         self._loop_thread.start()
         return {"ok": True, "output": output, "rejected": rejected}

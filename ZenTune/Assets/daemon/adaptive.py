@@ -143,7 +143,7 @@ class AdaptiveMixin:
         if static:
             self._apply_once(static, "Adaptive", reason="adaptive static settings")
         self._adaptive_thread = threading.Thread(
-            target=self._adaptive_body, args=(interval,), daemon=True, name="uxtu-adaptive")
+            target=self._adaptive_body, args=(interval,), daemon=True, name="zentune-adaptive")
         self._adaptive_thread.start()
         _mark_adaptive_session(True)
         return {"ok": True, "caps": sorted(caps)}

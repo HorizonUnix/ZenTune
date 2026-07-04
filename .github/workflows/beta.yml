@@ -26,18 +26,18 @@ jobs:
           git log -5 --pretty=format:"- \`%h\` %s" >> "${{ github.workspace }}-BETA_NOTES.txt"
 
       - name: Delete existing beta release
-        run: gh release delete U4L-Beta --yes 2>/dev/null || true
+        run: gh release delete ZenTune-Beta --yes 2>/dev/null || true
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
       - name: Force-move beta tag
         run: |
-          git tag -f U4L-Beta
-          git push origin U4L-Beta --force
+          git tag -f ZenTune-Beta
+          git push origin ZenTune-Beta --force
 
       - name: Create beta release
         run: |
-          gh release create U4L-Beta ZenTune.zip \
+          gh release create ZenTune-Beta ZenTune.zip \
             --title "ZenTune Beta Build" \
             --notes-file "${{ github.workspace }}-BETA_NOTES.txt" \
             --prerelease

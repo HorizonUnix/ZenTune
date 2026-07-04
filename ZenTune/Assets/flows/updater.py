@@ -12,7 +12,7 @@ from Assets.core import config as cfg
 from Assets.daemon.service import restart_service, service_running
 
 _STABLE_URL = "https://github.com/HorizonUnix/ZenTune/releases/latest/download/ZenTune.zip"
-_BETA_URL = "https://github.com/HorizonUnix/ZenTune/releases/download/U4L-Beta/ZenTune.zip"
+_BETA_URL = "https://github.com/HorizonUnix/ZenTune/releases/download/ZenTune-Beta/ZenTune.zip"
 
 
 def release_url(channel: str = "stable") -> str:
@@ -51,7 +51,7 @@ def is_beta_build() -> bool:
 
 
 def beta_available() -> bool:
-    api = cfg.GITHUB_API_URL.replace("/releases/latest", "/releases/tags/U4L-Beta")
+    api = cfg.GITHUB_API_URL.replace("/releases/latest", "/releases/tags/ZenTune-Beta")
     try:
         with urllib.request.urlopen(api, timeout=5) as resp:
             return resp.status == 200

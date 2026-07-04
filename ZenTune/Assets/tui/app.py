@@ -27,7 +27,7 @@ def _available_pages() -> list[str]:
     return helpers.exclude_adaptive_when_macos(_PAGES)
 
 
-class U4LApp(App):
+class ZenTuneApp(App):
     CSS_PATH = "app.tcss"
     TITLE = "ZenTune"
 
@@ -294,4 +294,4 @@ class U4LApp(App):
 
 
 def run(first_run: bool = False, dep_error: str | None = None):
-    return U4LApp(first_run=first_run, dep_error=dep_error).run()
+    return ZenTuneApp(first_run=first_run, dep_error=dep_error).run()

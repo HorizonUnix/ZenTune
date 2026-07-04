@@ -362,7 +362,7 @@ uninstall() {
     info "Files    : $INSTALL_DIR"
     echo ""
     local reply=""
-    if [[ "${UXTU_ASSUME_YES:-}" == "1" ]]; then
+    if [[ "${ZENTUNE_ASSUME_YES:-}" == "1" ]]; then
         reply="y"
     elif [[ -e /dev/tty ]]; then
         read -rp "  Continue? [y/N] " reply </dev/tty || reply=""
