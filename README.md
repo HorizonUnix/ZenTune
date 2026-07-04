@@ -1,4 +1,4 @@
-<picture><img align="center" src="/Img/Banner.gif"/></picture>
+<picture><img align="center" src="/Img/Banner.png"/></picture>
 <h4>Powered by ZenMaster and Python</h4>
 
 [![GitHub Downloads](https://img.shields.io/github/downloads/HorizonUnix/ZenTune/total?style=flat-square&color=blue)](https://github.com/HorizonUnix/ZenTune/releases)
