@@ -32,6 +32,8 @@ def _smu_ready_message(driver: str, version: str) -> str:
 def _smu_unavailable_message(reason: str) -> str:
     if plat.IS_LINUX:
         return f"{reason}\nInstall guide: {cfg.RYZEN_SMU_WIKI_URL}"
+    if plat.IS_MACOS:
+        return f"{reason}\nInstall guide: {cfg.MACOS_BACKEND_WIKI_URL}"
     return reason
 
 

@@ -9,6 +9,7 @@ from textual.app import App, ComposeResult
 from textual.widgets import Static, TabbedContent, TabPane, Footer
 
 from Assets.core import config as cfg
+from Assets.core import platform as plat
 from Assets.tui import helpers
 from Assets.tui.tabs.homeView import HomeTab
 from Assets.tui.tabs.premadeView import PowerTab
@@ -97,11 +98,11 @@ class U4LApp(App):
 
     @work(thread=True, exclusive=True, group="startup")
     def _deferred_startup(self) -> None:
-        from Assets.core.hardware import check_ryzen_smu
+        from Assets.core.hardware import check_ryzen_smu, check_macos_backend
         from Assets.daemon.service import service_path_stale
         from Assets.core.ipc import get_client
 
-        dep_error = check_ryzen_smu()
+        dep_error = check_macos_backend() if plat.IS_MACOS else check_ryzen_smu()
         if not dep_error and cfg.get("Info", "Type") == "Intel":
             dep_error = ("Intel CPUs are not supported.\n\n"
                          "ZenTune only supports AMD Ryzen APUs and desktop CPUs.")

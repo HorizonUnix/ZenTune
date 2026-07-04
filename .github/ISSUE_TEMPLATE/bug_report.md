@@ -1,6 +1,6 @@
 ---
 name: Bug report
-about: Report a problem with UXTU4Linux
+about: Report a problem with ZenTune
 title: "[Bug]: "
 labels: bug
 assignees: ''
@@ -36,7 +36,7 @@ and search existing issues first. -->
 
 ## Environment
 
-- UXTU4Linux version: <!-- e.g. v0.8.0 or commit hash -->
+- ZenTune version: <!-- e.g. v2.0.0 or commit hash -->
 - CPU model: <!-- e.g. AMD Ryzen 7 7735HS -->
 
 ## System information
@@ -45,15 +45,17 @@ and search existing issues first. -->
 
 ```
 uname -a
-cat /etc/os-release | head -n 2
+cat /etc/os-release 2>/dev/null || sw_vers   # sw_vers on macOS
 python3 --version
-cat /sys/kernel/ryzen_smu_drv/drv_version 2>/dev/null || echo "ryzen_smu not loaded"
-sudo dmidecode -t processor | grep -E "Version|Signature|Family|Manufacturer"
+cat /sys/kernel/ryzen_smu_drv/drv_version 2>/dev/null || echo "ryzen_smu not loaded"   # Linux only
+grep -E "^cpu family|^model|^model name" /proc/cpuinfo 2>/dev/null \
+    || sysctl machdep.cpu.family machdep.cpu.model machdep.cpu.brand_string   # macOS
 ```
 
 ## Daemon logs
 
-<!-- journalctl -u uxtu4linux.service -n 50 --no-pager -->
+<!-- Linux: journalctl -u zentune.service -n 50 --no-pager
+     macOS: tail -100 /var/log/zentune.log -->
 
 ```
 
@@ -61,7 +63,7 @@ sudo dmidecode -t processor | grep -E "Version|Signature|Family|Manufacturer"
 
 ## App config
 
-<!-- cat /opt/uxtu4linux/src/Assets/config.ini (remove anything sensitive) -->
+<!-- cat /opt/zentune/src/Assets/config.ini (remove anything sensitive) -->
 
 ```ini
 

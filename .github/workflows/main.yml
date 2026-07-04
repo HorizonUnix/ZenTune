@@ -17,7 +17,26 @@ jobs:
           echo "TAG=$LATEST_TAG" >> "$GITHUB_ENV"
 
       - name: Zip release
-        run: zip -r UXTU4Linux.zip UXTU4Linux
+        run: zip -r ZenTune.zip ZenTune
+
+      - name: Check if this release still ships the legacy migration relay
+        shell: bash
+        run: |
+          LOWEST="$(printf '%s\n%s\n' "2.0.0" "$TAG" | sort -V | head -1)"
+          HIGHEST="$(printf '%s\n%s\n' "$TAG" "2.2.0" | sort -V | tail -1)"
+          if [ "$LOWEST" = "2.0.0" ] && [ "$HIGHEST" = "2.2.0" ]; then
+            echo "SHIP_RELAY=1" >> "$GITHUB_ENV"
+          else
+            echo "SHIP_RELAY=0" >> "$GITHUB_ENV"
+          fi
+        env:
+          TAG: ${{ env.TAG }}
+
+      - name: Assemble legacy migration relay
+        if: env.SHIP_RELAY == '1'
+        run: |
+          mv migration/uxtu4linux_relay UXTU4Linux
+          zip -r UXTU4Linux.zip UXTU4Linux
 
       - name: Generate release notes
         shell: bash
@@ -25,7 +44,7 @@ jobs:
           cat > "${{ github.workspace }}-RELEASE_NOTES.txt" << 'HEADER'
           # Installation
           ```bash
-          curl -fsSL https://raw.githubusercontent.com/HorizonUnix/UXTU4Linux/main/install.sh | bash
+          curl -fsSL https://raw.githubusercontent.com/HorizonUnix/ZenTune/main/install.sh | bash
           ```
 
           HEADER
@@ -40,6 +59,8 @@ jobs:
           name: v${{ env.TAG }}
           tag_name: ${{ env.TAG }}
           body_path: ${{ github.workspace }}-RELEASE_NOTES.txt
-          files: UXTU4Linux.zip
+          files: |
+            ZenTune.zip
+            UXTU4Linux.zip
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}

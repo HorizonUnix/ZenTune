@@ -1,3 +1,29 @@
+## [2.0.0]
+
+UXTU4Linux is now **ZenTune**. This release drops the `dmidecode` system dependency, adds a way to override detected CPU info, adds macOS support
+
+### Hardware detection
+- **No more dmidecode.** CPU identity and board info are now read from `/proc/cpuinfo`, `/sys`, and `zenmaster`, which every distro already exposes.
+- **Hardware tab shows Device and Processor only.** Memory Information (RAM manufacturer/part number/speed, which only ever came from dmidecode's SMBIOS read), Battery Information (health/cycle detail), and Processor's cores/threads/clock/cache rows have all been dropped. The Processor card now shows exactly what's detected (name, codename, architecture, signature).
+- **Edit CPU info.** A new "Edit CPU info" button in Settings lets you override the detected CPU name, useful for demoing a different model's premade preset. It doesn't change your real detected architecture/family, so it can't affect how the daemon talks to your actual hardware.
+
+### macOS support
+- **ZenTune now runs on macOS** (Hackintosh, AMD Ryzen CPU). Tuning, presets and automations all work the same as on Linux.
+- **Two SMU access paths.** The daemon reaches the CPU through the [DirectHW](https://github.com/joevt/directhw) kernel extension, or a kext-free fallback through IOKit's `IOPCIBridge` service (needs the `debug=0x144` boot-arg, tuning only, no live sensor graphs). See the [macOS Installation guide](https://github.com/HorizonUnix/ZenTune/wiki/macOS-Installation).
+- **launchd instead of systemd.** The background daemon installs as a `launchd` job (`com.horizonunix.zentune`) and gets the same in-app management (install/restart/view logs/uninstall) as the systemd service on Linux.
+- **Startup backend check.** If neither DirectHW nor the kext-free fallback is usable, the app now shows a clear message pointing at the install guide, instead of silently failing to apply presets, matching the existing Secure Boot/ryzen_smu check on Linux.
+- **Adaptive Mode stays Linux-only for now.** The tab and its Settings toggle are hidden automatically on macOS.
+
+### Updates and repair
+- **Dependencies always stay current.** Both the in-app updater and the daemon's "Install / repair" action now always upgrade to the latest versions pinned in `requirements.txt`, instead of only installing what's missing. This closes a gap where the daemon's venv bootstrap didn't even check for `zenmaster`.
+- **Manual runs fail cleanly.** Running `UXTU4Linux.py` directly without `pip install -r requirements.txt` first now shows a clear message telling you what to install, instead of a raw traceback.
+
+### Renamed to ZenTune
+- **UXTU4Linux is now ZenTune.** Install paths, the systemd service, the socket, and the `zentune` command have all moved to match. Config and custom presets carry over automatically.
+- **v1.1.0 users migrate automatically.** If you're still on v1.1.0, using "Check for updates" one more time will walk you through a one-time automatic migration to ZenTune.
+
+**Full changelog:** https://github.com/HorizonUnix/ZenTune/compare/1.1.0...2.0.0
+
 ## [1.1.0]
 
 The headline addition is PCI direct access: the daemon now talks to the CPU without ryzen_smu on most systems. ryzen_smu is only needed when Secure Boot is on, because kernel lockdown blocks raw PCI config writes in that case. The Status tab was reworked to show adaptive state alongside daemon state in one panel, the Home tab picked up iGPU graphs, and the installer now handles non-systemd setups and distros with no supported package manager.
@@ -12,7 +38,7 @@ The headline addition is PCI direct access: the daemon now talks to the CPU with
 - **iGPU graphs.** iGPU clock and usage graphs are now shown on APUs when the hardware supports it.
 
 ### Version mismatch detection
-- **Notify on version mismatch.** If the running daemon is a different version than the TUI, the app shows a warning at startup. Usually happens after a partial update — restart the daemon to fix it.
+- **Notify on version mismatch.** If the running daemon is a different version than the TUI, the app shows a warning at startup. Usually happens after a partial update; restart the daemon to fix it.
 
 ### Updater
 - **Deps reinstalled on update.** The updater now reinstalls `requirements.txt` into the venv as part of the update, so a new dependency added in a release is picked up automatically. (Fixed #98)

@@ -1,4 +1,4 @@
 pyzmq
 textual
 textual-plotext
-zenmaster>=0.6.0
+zenmaster>=1.0.0

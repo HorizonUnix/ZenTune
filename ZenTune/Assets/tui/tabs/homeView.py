@@ -23,10 +23,14 @@ class HomeTab(VerticalScroll):
         ("Settings", "settings"),
     )
 
+    _LINUX_NAV_KEYS = ("power", "custom", "adaptive", "automations")
+
     @property
     def _nav(self):
-        from Assets.tui.helpers import exclude_adaptive_when_macos
-        return exclude_adaptive_when_macos(self._NAV_BASE, key=lambda t: t[1])
+        if plat.IS_MACOS:
+            from Assets.tui.helpers import exclude_adaptive_when_macos
+            return exclude_adaptive_when_macos(self._NAV_BASE, key=lambda t: t[1])
+        return tuple(t for t in self._NAV_BASE if t[1] in self._LINUX_NAV_KEYS)
 
     _GRAPHS = (
         ("cpu_temp", "CPU Temperature", "°C", (-10, 110)),

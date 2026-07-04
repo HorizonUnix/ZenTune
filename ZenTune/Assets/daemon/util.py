@@ -88,11 +88,12 @@ def _apply_via_smu(args: str, mode: str) -> tuple[str, bool]:
     if blocked:
         if not _smu_state["warned"]:
             _smu_state["warned"] = True
-            log.error("%s. Presets cannot be applied.\nInstall guide: %s", blocked, cfg.RYZEN_SMU_WIKI_URL)
+            wiki_url = cfg.MACOS_BACKEND_WIKI_URL if plat.IS_MACOS else cfg.RYZEN_SMU_WIKI_URL
+            log.error("%s. Presets cannot be applied.\nInstall guide: %s", blocked, wiki_url)
         return f"{blocked}, preset not applied", False
     if _smu_state["warned"]:
         _smu_state["warned"] = False
-        log.info("ryzen_smu is available again, presets can be applied.")
+        log.info("SMU backend is available again, presets can be applied.")
     try:
         from Assets.engine import runner
         output, rejected = runner.apply_args(args, family)

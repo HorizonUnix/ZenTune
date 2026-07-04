@@ -1,15 +1,27 @@
 #!/usr/bin/env bash
 set -euo pipefail
 
-INSTALL_DIR="/opt/uxtu4linux"
+IS_MACOS=false
+[[ "$(uname -s)" == "Darwin" ]] && IS_MACOS=true
+
+INSTALL_DIR="/opt/zentune"
 VENV_DIR="$INSTALL_DIR/venv"
 VENV_PYTHON="$VENV_DIR/bin/python3"
 SRC_DIR="$INSTALL_DIR/src"
-BIN_WRAPPER="/usr/local/bin/uxtu4linux"
-SERVICE_NAME="uxtu4linux.service"
-SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME"
-RELEASE_URL="https://github.com/HorizonUnix/UXTU4Linux/releases/latest/download/UXTU4Linux.zip"
+BIN_WRAPPER="/usr/local/bin/zentune"
+if $IS_MACOS; then
+    SERVICE_LABEL="com.horizonunix.zentune"
+    SERVICE_FILE="/Library/LaunchDaemons/${SERVICE_LABEL}.plist"
+else
+    SERVICE_NAME="zentune.service"
+    SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME"
+fi
+RELEASE_URL="https://github.com/HorizonUnix/ZenTune/releases/latest/download/ZenTune.zip"
 TMP_DIR="$(mktemp -d)"
+
+LOCAL_MODE=false
+SCRIPT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]:-$0}")" && pwd)"
+LOCAL_SRC_DIR="$SCRIPT_DIR/ZenTune"
 
 _R='\033[0m'; _B='\033[1m'; _D='\033[2m'; _G='\033[32m'; _Y='\033[33m'; _E='\033[31m'
 
@@ -21,29 +33,34 @@ hr()   { echo -e "  ${_D}$(printf '─%.0s' {1..58})${_R}"; }
 
 trap '[[ -n "$TMP_DIR" && ( "$TMP_DIR" == /tmp/* || "$TMP_DIR" == /var/tmp/* ) ]] && rm -rf -- "$TMP_DIR"' EXIT
 
-[[ $EUID -eq 0 ]] && die "Do not run as root — run as your normal user:  bash install.sh"
+[[ $EUID -eq 0 ]] && die "Do not run as root, run as your normal user:  bash install.sh"
 
 CURRENT_USER="$(whoami)"
 CURRENT_GROUP="$(id -gn)"
-HAS_SYSTEMD=false
-command -v systemctl &>/dev/null && HAS_SYSTEMD=true
+HAS_SERVICE_MANAGER=false
+if $IS_MACOS; then
+    HAS_SERVICE_MANAGER=true
+else
+    command -v systemctl &>/dev/null && HAS_SERVICE_MANAGER=true
+fi
 
 resolve_release_tag() {
     local tag=""
     if command -v curl &>/dev/null; then
         tag="$(curl -fsSL -o /dev/null -w '%{url_effective}' \
-            "https://github.com/HorizonUnix/UXTU4Linux/releases/latest" 2>/dev/null \
+            "https://github.com/HorizonUnix/ZenTune/releases/latest" 2>/dev/null \
             | sed 's|.*/tag/||')" || true
     elif command -v wget &>/dev/null; then
         tag="$(wget -q --server-response --spider \
-            "https://github.com/HorizonUnix/UXTU4Linux/releases/latest" 2>&1 \
+            "https://github.com/HorizonUnix/ZenTune/releases/latest" 2>&1 \
             | awk '/Location:/{print $2}' | tail -1 | sed 's|.*/tag/||')" || true
     fi
     echo "${tag:-latest}"
 }
 
 detect_pm() {
-    if   command -v apt-get &>/dev/null; then echo "apt"
+    if   $IS_MACOS; then echo "macos"
+    elif command -v apt-get &>/dev/null; then echo "apt"
     elif command -v dnf     &>/dev/null; then echo "dnf"
     elif command -v yum     &>/dev/null; then echo "yum"
     elif command -v pacman  &>/dev/null; then echo "pacman"
@@ -68,8 +85,11 @@ ensure_python310() {
         return
     fi
 
-    warn "Python 3.10+ not found — installing..."
+    warn "Python 3.10+ not found, installing..."
     case "$1" in
+        macos)
+            die "Python 3.10+ not found. Install it via 'brew install python@3.13' or from https://www.python.org/downloads/macos/ and re-run this script."
+            ;;
         apt)
             if grep -qi "ubuntu" /etc/os-release 2>/dev/null; then
                 sudo apt-get install -y -qq software-properties-common &>/dev/null
@@ -127,31 +147,43 @@ install_deps() {
             sudo apt-get update -qq &>/dev/null
             sudo apt-get install -y -qq --no-install-recommends \
                 python3 python3-venv python3-pip \
-                dmidecode wget unzip curl &>/dev/null
+                wget unzip curl &>/dev/null
             ;;
         dnf)
             sudo dnf install -y -q \
                 python3 python3-pip \
-                dmidecode wget unzip curl &>/dev/null
+                wget unzip curl &>/dev/null
             ;;
         yum)
             sudo yum install -y -q \
                 python3 python3-pip \
-                dmidecode wget unzip curl &>/dev/null
+                wget unzip curl &>/dev/null
             ;;
         pacman)
             sudo pacman -Sy --noconfirm --quiet \
                 python python-pip \
-                dmidecode wget unzip curl &>/dev/null
+                wget unzip curl &>/dev/null
             ;;
         zypper)
             sudo zypper install -y --quiet \
                 python3 python3-pip \
-                dmidecode wget unzip curl &>/dev/null
+                wget unzip curl &>/dev/null
+            ;;
+        macos)
+            local missing=()
+            command -v unzip &>/dev/null || missing+=("unzip")
+            command -v curl  &>/dev/null || missing+=("curl")
+            if [[ ${#missing[@]} -gt 0 ]]; then
+                echo ""
+                warn "Missing required tools. Install them and re-run:"
+                for pkg in "${missing[@]}"; do info "  · $pkg"; done
+                echo ""
+                die "Missing required tools."
+            fi
+            ok "Required tools already present."
             ;;
         unknown)
             local missing=()
-            command -v dmidecode &>/dev/null || missing+=("dmidecode")
             command -v unzip     &>/dev/null || missing+=("unzip")
             { command -v wget &>/dev/null || command -v curl &>/dev/null; } \
                 || missing+=("wget or curl")
@@ -188,11 +220,18 @@ download_release() {
 }
 
 install_files() {
-    info "Extracting files..."
-    unzip -q "$TMP_DIR/release.zip" -d "$TMP_DIR/extracted" || die "Failed to extract archive."
     local src
-    src="$(find "$TMP_DIR/extracted" -maxdepth 1 -mindepth 1 -type d | head -1)"
-    [[ -d "$src" ]] || die "Could not find source directory in archive."
+    if $LOCAL_MODE; then
+        info "Using local checkout at $LOCAL_SRC_DIR..."
+        [[ -f "$LOCAL_SRC_DIR/zentune.py" ]] \
+            || die "Local checkout not found at $LOCAL_SRC_DIR (run --local from inside the cloned repo)."
+        src="$LOCAL_SRC_DIR"
+    else
+        info "Extracting files..."
+        unzip -q "$TMP_DIR/release.zip" -d "$TMP_DIR/extracted" || die "Failed to extract archive."
+        src="$(find "$TMP_DIR/extracted" -maxdepth 1 -mindepth 1 -type d | head -1)"
+        [[ -d "$src" ]] || die "Could not find source directory in archive."
+    fi
 
     sudo mkdir -p "$INSTALL_DIR"
     sudo chown "$CURRENT_USER:$CURRENT_GROUP" "$INSTALL_DIR"
@@ -232,7 +271,7 @@ setup_venv() {
     [[ -n "$py" ]] || die "python3 not found."
 
     if [[ -d "$VENV_DIR" ]] && ! "$VENV_PYTHON" -c "" &>/dev/null; then
-        warn "Broken venv — recreating..."
+        warn "Broken venv, recreating..."
         rm -rf "$VENV_DIR"
     fi
 
@@ -253,7 +292,7 @@ setup_venv() {
 
 set_permissions() {
     info "Setting permissions..."
-    chmod +x "$SRC_DIR/UXTU4Linux.py"
+    chmod +x "$SRC_DIR/zentune.py"
     ok "Permissions set."
 }
 
@@ -261,7 +300,7 @@ install_wrapper() {
     info "Installing launcher..."
     sudo tee "$BIN_WRAPPER" > /dev/null <<EOF
 #!/usr/bin/env bash
-exec "$VENV_PYTHON" "$SRC_DIR/UXTU4Linux.py" "\$@"
+exec "$VENV_PYTHON" "$SRC_DIR/zentune.py" "\$@"
 EOF
     sudo chmod +x "$BIN_WRAPPER"
     [[ -x "$BIN_WRAPPER" ]] || die "Failed to install launcher at $BIN_WRAPPER"
@@ -269,27 +308,32 @@ EOF
 }
 
 daemon_is_installed() {
-    $HAS_SYSTEMD && [[ -f "$SERVICE_FILE" ]]
+    $HAS_SERVICE_MANAGER && [[ -f "$SERVICE_FILE" ]]
 }
 
 restart_daemon() {
-    $HAS_SYSTEMD || return 0
+    $HAS_SERVICE_MANAGER || return 0
     info "Restarting daemon..."
-    sudo systemctl daemon-reload
-    sudo systemctl restart "$SERVICE_NAME" \
-        && ok "Daemon restarted." \
-        || warn "Could not restart daemon — run: sudo systemctl status $SERVICE_NAME"
+    if $IS_MACOS; then
+        sudo launchctl kickstart -k "system/${SERVICE_LABEL}" \
+            && ok "Daemon restarted." \
+            || warn "Could not restart daemon, run: sudo launchctl kickstart -k system/${SERVICE_LABEL}"
+    else
+        sudo systemctl daemon-reload
+        sudo systemctl restart "$SERVICE_NAME" \
+            && ok "Daemon restarted." \
+            || warn "Could not restart daemon, run: sudo systemctl status $SERVICE_NAME"
+    fi
 }
 
 print_logo() {
     echo ""
-    echo -e "${_B}+----------------------------------------------------------+"
-    echo -e "|  _   ___  _______ _   _ _  _   _     _                   |"
-    echo -e "| | | | \ \/ /_   _| | | | || | | |   (_)_ __  _   ___  __ |"
-    echo -e "| | | | |\  /  | | | | | | || |_| |   | | '_ \| | | \ \/ / |"
-    echo -e "| | |_| |/  \  | | | |_| |__   _| |___| | | | | |_| |>  <  |"
-    echo -e "|  \___//_/\_\ |_|  \___/   |_| |_____|_|_| |_|\__,_/_/\_\ |"
-    echo -e "+----------------------------------------------------------+${_R}"
+    echo -e "${_B}███████╗███████╗███╗   ██╗████████╗██╗   ██╗███╗   ██╗███████╗"
+    echo -e "╚══███╔╝██╔════╝████╗  ██║╚══██╔══╝██║   ██║████╗  ██║██╔════╝"
+    echo -e "  ███╔╝ █████╗  ██╔██╗ ██║   ██║   ██║   ██║██╔██╗ ██║█████╗"
+    echo -e " ███╔╝  ██╔══╝  ██║╚██╗██║   ██║   ██║   ██║██║╚██╗██║██╔══╝"
+    echo -e "███████╗███████╗██║ ╚████║   ██║   ╚██████╔╝██║ ╚████║███████╗"
+    echo -e "╚══════╝╚══════╝╚═╝  ╚═══╝   ╚═╝    ╚═════╝ ╚═╝  ╚═══╝╚══════╝${_R}"
     echo ""
 }
 
@@ -312,7 +356,7 @@ uninstall() {
     echo -e "  ${_D}Uninstaller${_R}"
     hr
     echo ""
-    warn "This will completely remove UXTU4Linux:"
+    warn "This will completely remove ZenTune:"
     info "Service  : $SERVICE_FILE"
     info "Launcher : $BIN_WRAPPER"
     info "Files    : $INSTALL_DIR"
@@ -328,12 +372,17 @@ uninstall() {
     hr
     echo ""
 
-    if $HAS_SYSTEMD && [[ -f "$SERVICE_FILE" ]]; then
+    if $HAS_SERVICE_MANAGER && [[ -f "$SERVICE_FILE" ]]; then
         info "Removing daemon service..."
-        sudo systemctl stop "$SERVICE_NAME" 2>/dev/null || true
-        sudo systemctl disable "$SERVICE_NAME" 2>/dev/null || true
-        sudo rm -f "$SERVICE_FILE"
-        sudo systemctl daemon-reload 2>/dev/null || true
+        if $IS_MACOS; then
+            sudo launchctl bootout "system/${SERVICE_LABEL}" 2>/dev/null || true
+            sudo rm -f "$SERVICE_FILE"
+        else
+            sudo systemctl stop "$SERVICE_NAME" 2>/dev/null || true
+            sudo systemctl disable "$SERVICE_NAME" 2>/dev/null || true
+            sudo rm -f "$SERVICE_FILE"
+            sudo systemctl daemon-reload 2>/dev/null || true
+        fi
         ok "Daemon service removed."
     else
         info "No daemon service to remove."
@@ -353,12 +402,12 @@ uninstall() {
         info "No installation files to remove."
     fi
 
-    sudo rm -f /run/uxtu4linux.sock /run/uxtu4linux_daemon.lock 2>/dev/null || true
-    rm -f /tmp/uxtu4linux_tui.lock 2>/dev/null || true
+    sudo rm -f /run/zentune.sock /run/zentune_daemon.lock 2>/dev/null || true
+    rm -f /tmp/zentune_tui.lock 2>/dev/null || true
 
     echo ""
     hr
-    ok "UXTU4Linux has been uninstalled."
+    ok "ZenTune has been uninstalled."
     hr
     echo ""
 }
@@ -377,56 +426,76 @@ run_setup() {
 
     echo -e "  ${_G}Done!${_R} Run the app with:"
     echo ""
-    echo -e "    ${_B}uxtu4linux${_R}"
+    echo -e "    ${_B}$(basename "$BIN_WRAPPER")${_R}"
     echo ""
 
-    if ! $HAS_SYSTEMD; then
-        warn "No systemd detected — the daemon must be started manually."
+    if ! $HAS_SERVICE_MANAGER; then
+        if $IS_MACOS; then
+            warn "launchd not available, the daemon must be started manually."
+        else
+            warn "No systemd detected, the daemon must be started manually."
+        fi
         info "Start the daemon (needs root) before running the app:"
         echo ""
         echo -e "    ${_B}sudo $VENV_PYTHON $SRC_DIR/Assets/daemon/daemon.py${_R}"
         echo ""
-        info "For OpenRC / runit / s6 service examples, see the wiki:"
-        info "https://github.com/HorizonUnix/UXTU4Linux/wiki/Linux-Installation"
-        echo ""
+        if ! $IS_MACOS; then
+            info "For OpenRC / runit / s6 service examples, see the wiki:"
+            info "https://github.com/HorizonUnix/ZenTune/wiki/Linux-Installation"
+            echo ""
+        fi
     fi
 }
 
 main() {
+    if [[ "${1:-}" == "--local" ]]; then
+        LOCAL_MODE=true
+        shift
+    fi
+
     case "${1:-}" in
         --uninstall|-u)
             uninstall
             return
             ;;
         --help|-h)
-            echo "Usage: bash install.sh [--uninstall]"
-            echo "  (no args)      Install or update UXTU4Linux."
-            echo "  --uninstall    Remove UXTU4Linux (service, launcher, and files)."
+            echo "Usage: bash install.sh [--local] [--uninstall]"
+            echo "  (no args)      Install or update ZenTune from the latest GitHub release."
+            echo "  --local        Install from this local checkout instead of downloading a release (for testing)."
+            echo "  --uninstall    Remove ZenTune (service, launcher, and files)."
             return
             ;;
     esac
 
     local tag
-    tag="$(resolve_release_tag)"
+    if $LOCAL_MODE; then
+        tag="local checkout"
+    else
+        tag="$(resolve_release_tag)"
+    fi
     print_banner "$tag"
 
     local pm
     pm="$(detect_pm)"
 
     if [[ "$pm" == "unknown" ]]; then
-        warn "No supported package manager found — checking for required tools."
+        warn "No supported package manager found, checking for required tools."
     else
         info "Package manager: $pm"
     fi
 
-    if ! $HAS_SYSTEMD; then
-        warn "systemd not found — daemon will need to be started manually after install."
+    if ! $HAS_SERVICE_MANAGER; then
+        if $IS_MACOS; then
+            warn "launchd not available, daemon will need to be started manually after install."
+        else
+            warn "systemd not found, daemon will need to be started manually after install."
+        fi
         echo ""
     fi
 
     if daemon_is_installed; then
         echo ""
-        warn "Existing installation found — updating files and restarting daemon."
+        warn "Existing installation found, updating files and restarting daemon."
     fi
 
     hr
@@ -434,7 +503,9 @@ main() {
 
     ensure_python310 "$pm"
     install_deps "$pm"
-    download_release
+    if ! $LOCAL_MODE; then
+        download_release
+    fi
     install_files
     setup_venv
     set_permissions

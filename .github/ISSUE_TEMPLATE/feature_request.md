@@ -1,6 +1,6 @@
 ---
 name: Feature request
-about: Suggest an idea or improvement for UXTU4Linux
+about: Suggest an idea or improvement for ZenTune
 title: "[Feature]: "
 labels: enhancement
 assignees: ''

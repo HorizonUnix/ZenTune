@@ -80,6 +80,25 @@ def check_ryzen_smu() -> str | None:
     return f"{message}.\n\n{_SMU_INSTALL_GUIDE}"
 
 
+_MACOS_INSTALL_GUIDE = f"Install guide: {cfg.MACOS_BACKEND_WIKI_URL}"
+
+
+def check_macos_backend() -> str | None:
+    from zenmaster import directhw, iokit
+
+    if directhw.is_loaded():
+        return None
+    if iokit.is_available() and "debug=0x144" in _sysctl_str("kern.bootargs"):
+        return None
+
+    message = (
+        "No SMU access path is available.\n\n"
+        "Install DirectHW.kext, or run as root with the debug=0x144 boot-arg "
+        "for the kext-free fallback"
+    )
+    return f"{message}.\n\n{_MACOS_INSTALL_GUIDE}"
+
+
 def _read_sysfs(path: str) -> str | None:
     try:
         with open(path) as f:
@@ -122,6 +141,14 @@ def _sysctl_int(name: str) -> int:
         return int(out.stdout.strip())
     except ValueError:
         return 0
+
+
+def _sysctl_str(name: str) -> str:
+    try:
+        out = subprocess.run(["sysctl", "-n", name], capture_output=True, text=True, timeout=5)
+    except (OSError, subprocess.SubprocessError):
+        return ""
+    return out.stdout.strip()
 
 
 def _detect_framework_variant() -> str:

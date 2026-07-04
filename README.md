@@ -1,17 +1,17 @@
 <picture><img align="center" src="/Img/Banner.gif"/></picture>
-<h4>Powered by Python</h4>
+<h4>Powered by ZenMaster and Python</h4>
 
-[![GitHub Downloads](https://img.shields.io/github/downloads/HorizonUnix/UXTU4Linux/total?style=flat-square&color=blue)](https://github.com/HorizonUnix/UXTU4Linux/releases)
+[![GitHub Downloads](https://img.shields.io/github/downloads/HorizonUnix/ZenTune/total?style=flat-square&color=blue)](https://github.com/HorizonUnix/ZenTune/releases)
 [![Python](https://img.shields.io/badge/Python-3.10%2B-yellow?style=flat-square)](https://www.python.org/)
-[![License](https://img.shields.io/github/license/HorizonUnix/UXTU4Linux?style=flat-square)](LICENSE)
-[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/HorizonUnix/UXTU4Linux)
+[![License](https://img.shields.io/github/license/HorizonUnix/ZenTune?style=flat-square)](LICENSE)
+[![Ask DeepWiki](https://deepwiki.com/badge.svg)](https://deepwiki.com/HorizonUnix/ZenTune)
 
 ## Overview
 
-UXTU4Linux is a power management tool for **AMD Ryzen APUs and desktop CPUs** on Linux. Talks to the CPU through PCI direct access on most systems, or through [ryzen_smu](https://github.com/amkillam/ryzen_smu) when Secure Boot is on. Set power limits, temperature limits, VRM currents, clocks and Curve Optimiser without touching the BIOS. The terminal UI runs as your normal user; a root daemon handles the hardware writes.
+ZenTune (formerly UXTU4Linux) is a power management tool for **AMD Ryzen APUs and desktop CPUs** on Linux and macOS. Talks to the CPU through PCI direct access on most systems, or through [ryzen_smu](https://github.com/amkillam/ryzen_smu) when Secure Boot is on. Set power limits, temperature limits, VRM currents, clocks and Curve Optimiser without touching the BIOS. The terminal UI runs as your normal user; a root daemon handles the hardware writes.
 
 - Built-in Eco / Balance / Performance / Extreme presets for Ryzen APUs, desktop CPUs and Framework Laptops
-- Adaptive Mode: tunes power limit, Curve Optimiser and iGPU clocks live from temperature and load; savable presets and auto-start
+- Adaptive Mode (Linux only): tunes power limit, Curve Optimiser and iGPU clocks live from temperature and load; savable presets and auto-start
 - Custom Preset Editor with ~65 parameters on APUs: power/temp limits, VRM currents, clock targets, per-core CO, static OC
 - System settings inside presets: power profile, ASUS performance mode / GPU Eco / MUX, CCD affinity on dual-CCD chips
 - NVIDIA dGPU clock limits and core/mem offsets
@@ -28,24 +28,25 @@ UXTU4Linux is a power management tool for **AMD Ryzen APUs and desktop CPUs** on
 | Platform | Status |
 |----------|--------|
 | Linux with systemd, Python 3.10+ | Actively supported |
-| Linux without systemd (OpenRC, runit, etc.) | Supported — installer sets everything up, you start the daemon manually |
+| Linux without systemd (OpenRC, runit, etc.) | Supported: installer sets everything up, you start the daemon manually |
+| macOS (Hackintosh, AMD CPU) | Supported: tuning, presets and automations work; Adaptive Mode is Linux-only for now |
 | Intel | Not supported |
 
 > [!NOTE]
-> **ryzen_smu is only required when Secure Boot is enabled.** PCI direct access works on most systems without any kernel module. If Secure Boot is on, install ryzen_smu ≥ 0.1.7 and enroll the signing key — the [Wiki](../../wiki) has per-distro steps.
+> **ryzen_smu is only required on Linux when Secure Boot is enabled.** PCI direct access works on most Linux systems without any kernel module, and on macOS the daemon talks to the SMU through [DirectHW](https://github.com/joevt/directhw) or the kext-free IOPCIBridge path instead. If Secure Boot is on, install ryzen_smu ≥ 0.1.7 and enroll the signing key; the [Wiki](../../wiki) has per-distro steps.
 
 ---
 
 ## Installation
 
 ```bash
-curl -fsSL https://raw.githubusercontent.com/HorizonUnix/UXTU4Linux/main/install.sh | bash
+curl -fsSL https://raw.githubusercontent.com/HorizonUnix/ZenTune/main/install.sh | bash
 ```
 
 Then run:
 
 ```bash
-uxtu4linux
+zentune
 ```
 
 The first run walks you through setting up the daemon and detecting your hardware. For the full setup guide, ryzen_smu build steps and troubleshooting, see the **[Wiki](../../wiki)**.
@@ -54,11 +55,11 @@ The first run walks you through setting up the daemon and detecting your hardwar
 
 ## Star History
 
-<a href="https://www.star-history.com/?repos=HorizonUnix%2FUXTU4Linux&type=date&legend=top-left">
+<a href="https://www.star-history.com/?repos=HorizonUnix%2FZenTune&type=date&legend=top-left">
  <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=HorizonUnix/UXTU4Linux&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=HorizonUnix/UXTU4Linux&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=HorizonUnix/UXTU4Linux&type=date&legend=top-left" />
+   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=HorizonUnix/ZenTune&type=date&theme=dark&legend=top-left" />
+   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=HorizonUnix/ZenTune&type=date&legend=top-left" />
+   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=HorizonUnix/ZenTune&type=date&legend=top-left" />
  </picture>
 </a>
 

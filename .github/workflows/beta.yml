@@ -11,7 +11,7 @@ jobs:
           show-progress: false
 
       - name: Zip release
-        run: zip -r UXTU4Linux.zip UXTU4Linux
+        run: zip -r ZenTune.zip ZenTune
 
       - name: Generate beta notes
         shell: bash
@@ -37,8 +37,8 @@ jobs:
 
       - name: Create beta release
         run: |
-          gh release create U4L-Beta UXTU4Linux.zip \
-            --title "U4L Beta Build" \
+          gh release create U4L-Beta ZenTune.zip \
+            --title "ZenTune Beta Build" \
             --notes-file "${{ github.workspace }}-BETA_NOTES.txt" \
             --prerelease
         env:

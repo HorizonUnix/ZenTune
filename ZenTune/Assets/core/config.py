@@ -8,7 +8,7 @@ from pathlib import Path
 from Assets.core.platform import RUNTIME_DIR
 
 LOCAL_VERSION = "2.0.0"
-LOCAL_BUILD = "R1-03Jul26"
+LOCAL_BUILD = "R2-04Jul26"
 
 APP_NAME = "zentune"
 DIST_NAME = "ZenTune"
@@ -16,6 +16,7 @@ DIST_NAME = "ZenTune"
 GITHUB_API_URL = "https://api.github.com/repos/HorizonUnix/ZenTune/releases/latest"
 LATEST_VER_URL = "https://github.com/HorizonUnix/ZenTune/releases/latest"
 RYZEN_SMU_WIKI_URL = "https://github.com/HorizonUnix/ZenTune/wiki/Linux-Installation#2-install-ryzen_smu-secure-boot-only"
+MACOS_BACKEND_WIKI_URL = "https://github.com/HorizonUnix/ZenTune/wiki/macOS-Installation"
 
 _ROOT = os.path.dirname(os.path.dirname(os.path.dirname(os.path.realpath(__file__))))
 ASSETS_DIR = os.path.join(_ROOT, "Assets")
