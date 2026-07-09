@@ -7,8 +7,8 @@ from pathlib import Path
 
 from Assets.core.platform import RUNTIME_DIR
 
-LOCAL_VERSION = "2.0.0"
-LOCAL_BUILD = "R2-04Jul26"
+LOCAL_VERSION = "2.0.1"
+LOCAL_BUILD = "R2-09Jul26-f1"
 
 APP_NAME = "zentune"
 DIST_NAME = "ZenTune"

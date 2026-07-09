@@ -1,3 +1,7 @@
+## [2.0.1]
+
+- Resolved issue #101
+
 ## [2.0.0]
 
 UXTU4Linux is now **ZenTune**. This release drops the `dmidecode` system dependency, adds a way to override detected CPU info, adds macOS support
