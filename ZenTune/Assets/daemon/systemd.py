@@ -16,10 +16,13 @@ _available: bool | None = None
 def is_available() -> bool:
     global _available
     if _available is None:
-        _available = subprocess.call(
-            ["systemctl", "--version"],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        ) == 0
+        try:
+            _available = subprocess.call(
+                ["systemctl", "--version"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            ) == 0
+        except OSError:
+            _available = False
     return _available
 
 
