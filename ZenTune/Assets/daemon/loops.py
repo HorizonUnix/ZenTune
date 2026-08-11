@@ -89,25 +89,17 @@ class LoopsMixin:
             "Reapply loop started (mode='%s', interval=%ds, automation=%s).",
             mode, interval, automation,
         )
-        last_loop_tick = time.monotonic()
         while not self._stop_evt.wait(interval):
             try:
                 if self._adaptive_running:
-                    last_loop_tick = time.monotonic()
                     continue
-                now = time.monotonic()
-                elapsed = now - last_loop_tick
-                last_loop_tick = now
                 last_resume = getattr(self, "_last_resume_time", 0.0)
-                if elapsed > (interval + _SUSPEND_GAP_THRESHOLD_S) or (now - last_resume < _POST_SUSPEND_WAIT_S):
-                    if (now - last_resume) >= _POST_SUSPEND_WAIT_S:
-                        self._last_resume_time = now
-                        last_resume = now
-                    wait_sec = max(0.1, _POST_SUSPEND_WAIT_S - (now - last_resume) + 0.5)
-                    log.debug("Reapply loop waiting post-resume (%.1fs)...", wait_sec)
+                time_since_resume = time.monotonic() - last_resume
+                if time_since_resume < _POST_SUSPEND_WAIT_S:
+                    wait_sec = _POST_SUSPEND_WAIT_S - time_since_resume
+                    log.debug("Reapply loop waiting %.1fs post-resume before SMU apply...", wait_sec)
                     if self._stop_evt.wait(wait_sec):
                         break
-                    continue
                 on_ac = _on_ac()
                 eff_mode, eff_args = self._effective_mode_args(mode, args, automation, on_ac)
                 changed = eff_mode != self._last_logged_mode
