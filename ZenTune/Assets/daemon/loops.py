@@ -72,11 +72,13 @@ class LoopsMixin:
             log.debug("System recently resumed; waiting %.1fs before SMU apply...", wait_sec)
             time.sleep(wait_sec)
         output, rejected = _apply_via_smu(args, mode)
+        now = time.monotonic()
         with self._lock:
             self._mode = mode
             self._args = args
             self._last_output = output
             self._last_rejected = rejected
+            self._last_smu_apply_time = now
         if reason and not rejected:
             log.info("Applied preset '%s' (%s).", _dn(mode), reason)
         return output, rejected
@@ -100,6 +102,11 @@ class LoopsMixin:
                     log.debug("Reapply loop waiting %.1fs post-resume before SMU apply...", wait_sec)
                     if self._stop_evt.wait(wait_sec):
                         break
+                    continue
+                last_smu_apply = getattr(self, "_last_smu_apply_time", 0.0)
+                if time.monotonic() - last_smu_apply < interval:
+                    log.debug("Reapply loop skipped: preset recently applied %.1fs ago.", time.monotonic() - last_smu_apply)
+                    continue
                 on_ac = _on_ac()
                 eff_mode, eff_args = self._effective_mode_args(mode, args, automation, on_ac)
                 changed = eff_mode != self._last_logged_mode
