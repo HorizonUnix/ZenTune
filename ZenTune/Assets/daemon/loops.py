@@ -65,6 +65,12 @@ class LoopsMixin:
         if not args:
             log.debug("Apply skipped: no args for preset '%s'.", mode)
             return "", False
+        last_resume = getattr(self, "_last_resume_time", 0.0)
+        time_since_resume = time.monotonic() - last_resume
+        if time_since_resume < _POST_SUSPEND_WAIT_S:
+            wait_sec = _POST_SUSPEND_WAIT_S - time_since_resume
+            log.debug("System recently resumed; waiting %.1fs before SMU apply...", wait_sec)
+            time.sleep(wait_sec)
         output, rejected = _apply_via_smu(args, mode)
         with self._lock:
             self._mode = mode
