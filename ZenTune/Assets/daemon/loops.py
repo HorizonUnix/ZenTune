@@ -90,10 +90,11 @@ class LoopsMixin:
                 last_resume = getattr(self, "_last_resume_time", 0.0)
                 time_since_resume = time.monotonic() - last_resume
                 if time_since_resume < _POST_SUSPEND_WAIT_S:
-                    wait_sec = _POST_SUSPEND_WAIT_S - time_since_resume
-                    log.debug("Reapply loop waiting %.1fs post-resume before SMU apply...", wait_sec)
+                    wait_sec = _POST_SUSPEND_WAIT_S - time_since_resume + 0.5
+                    log.debug("Reapply loop waiting post-resume...")
                     if self._stop_evt.wait(wait_sec):
                         break
+                    continue
                 on_ac = _on_ac()
                 eff_mode, eff_args = self._effective_mode_args(mode, args, automation, on_ac)
                 changed = eff_mode != self._last_logged_mode
@@ -186,8 +187,8 @@ class LoopsMixin:
                 if slept > _SUSPEND_GAP_THRESHOLD_S:
                     self._last_resume_time = time.monotonic()
                     log.info(
-                        "Woke from suspend (slept ~%s); waiting %.0fs before applying automations to prevent SMU panic...",
-                        _fmt_duration(slept), _POST_SUSPEND_WAIT_S,
+                        "Woke from suspend (slept ~%s); waiting 5s...",
+                        _fmt_duration(slept),
                     )
                     if self._stop_suspend_evt.wait(_POST_SUSPEND_WAIT_S):
                         break
@@ -199,12 +200,12 @@ class LoopsMixin:
                             mode, args = result
                             self._apply_once(
                                 args, mode,
-                                reason=f"woke from suspend after ~{_fmt_duration(slept)} (OnResume)",
+                                reason=f"woke from suspend (~{_fmt_duration(slept)})",
                             )
                             self._last_logged_mode = mode
                         else:
                             log.warning(
-                                "Woke from suspend, but the On Resume preset '%s' no longer exists.",
+                                "Woke from suspend; On Resume preset '%s' not found.",
                                 _dn(preset_name),
                             )
                     else:
@@ -215,14 +216,11 @@ class LoopsMixin:
                         if eff_args:
                             self._apply_once(
                                 eff_args, eff_mode,
-                                reason=f"woke from suspend after ~{_fmt_duration(slept)} ({'OnAC' if current_ac else 'OnBattery'})",
+                                reason=f"woke from suspend (~{_fmt_duration(slept)})",
                             )
                             self._last_logged_mode = eff_mode
                         else:
-                            log.info(
-                                "Woke from suspend (slept ~%s), no On Resume or power slot automation configured.",
-                                _fmt_duration(slept),
-                            )
+                            log.info("Woke from suspend; no preset configured.")
                 last_boottime_offset = current_boottime_offset
             except Exception as exc:
                 log.warning("Suspend monitor tick error: %s", exc)
