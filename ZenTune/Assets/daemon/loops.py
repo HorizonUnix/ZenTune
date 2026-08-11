@@ -161,6 +161,10 @@ class LoopsMixin:
                     prev_state = "AC" if self._last_ac_state else "battery"
                     new_state = "AC" if current_ac else "battery"
                     self._last_ac_state = current_ac
+                    last_smu_apply = getattr(self, "_last_smu_apply_time", 0.0)
+                    if time.monotonic() - last_smu_apply < 3.0:
+                        log.debug("Power monitor skipped: SMU command applied %.1fs ago.", time.monotonic() - last_smu_apply)
+                        continue
                     eff_mode, eff_args = self._effective_mode_args(
                         mode, args, automation=True, on_ac=current_ac, keep_on_empty=True
                     )
@@ -204,6 +208,11 @@ class LoopsMixin:
                     )
                     if self._stop_suspend_evt.wait(_POST_SUSPEND_WAIT_S):
                         break
+                    last_smu_apply = getattr(self, "_last_smu_apply_time", 0.0)
+                    if time.monotonic() - last_smu_apply < 3.0:
+                        log.debug("Suspend monitor skipped post-wake apply: SMU command applied %.1fs ago.", time.monotonic() - last_smu_apply)
+                        last_boottime_offset = current_boottime_offset
+                        continue
                     cfg.load()
                     preset_name = cfg.get("Automations", "OnResume", "")
                     if preset_name:

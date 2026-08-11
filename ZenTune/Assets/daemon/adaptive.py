@@ -95,6 +95,7 @@ class AdaptiveMixin:
                     log.debug("Adaptive loop waiting %.1fs post-resume before SMU apply...", wait_sec)
                     if self._stop_adaptive_evt.wait(wait_sec):
                         break
+                    continue
                 sample = sensors.sample()
                 merged = self._adaptive_tick_args(sample)
                 if merged:
