@@ -1,7 +1,6 @@
 from __future__ import annotations
 
 from Assets.core import config as cfg
-from Assets.core.powerstate import on_ac
 
 
 WORDMARK = "◆ ZenTune"

@@ -11,15 +11,15 @@ from Assets.core import config as cfg
 
 class AdaptiveTab(VerticalScroll):
     _FIELDS = (
-        ("max_temp", "Max Temperature Limit", "°C", 85),
+        ("max_temp", "Max Temperature Limit", "°C", 95),
         ("power", "Max Power Limit", "W", 28),
         ("co_max", "Max Curve Optimiser Limit", "", 30),
         ("igpu_min", "Minimum iGPU Clock Limit", "MHz", 400),
-        ("igpu_max", "Maximum iGPU Clock Limit", "MHz", 2000),
-        ("min_cpu_clk", "Minimum CPU Clock Limit", "MHz", 1200),
-        ("nv_max_clk", "Max GPU Clock", "MHz", 4000),
-        ("nv_core_offset", "GPU Core Offset", "MHz", 0),
-        ("nv_mem_offset", "GPU Mem Offset", "MHz", 0),
+        ("igpu_max", "Maximum iGPU Clock Limit", "MHz", 1900),
+        ("min_cpu_clk", "Minimum CPU Clock Limit", "MHz", 1500),
+        ("nv_max_clk", "Frequency-Adjusted Voltage Limit", "MHz", 4000),
+        ("nv_core_offset", "GPU Core Clock Offset", "MHz", 0),
+        ("nv_mem_offset", "GPU Memory Clock", "MHz", 0),
     )
 
     _HINTS = {
@@ -35,15 +35,15 @@ class AdaptiveTab(VerticalScroll):
     }
 
     _RANGES = {
-        "max_temp":      (50, 105),
-        "power":         (5, 300),
-        "co_max":        (0, 30),
-        "igpu_min":      (200, 2000),
-        "igpu_max":      (200, 2000),
-        "min_cpu_clk":   (400, 4000),
-        "nv_max_clk":    (100, 4000),
-        "nv_core_offset": (-1000, 1000),
-        "nv_mem_offset":  (-1000, 1000),
+        "max_temp":      (10, 105),
+        "power":         (8, 300),
+        "co_max":        (0, 50),
+        "igpu_min":      (200, 3400),
+        "igpu_max":      (200, 3400),
+        "min_cpu_clk":   (1000, 4000),
+        "nv_max_clk":    (400, 4000),
+        "nv_core_offset": (-500, 2000),
+        "nv_mem_offset":  (-500, 2000),
     }
 
     _CORE_KEYS = ("max_temp", "power", "co_max", "igpu_min", "igpu_max", "min_cpu_clk")
@@ -102,6 +102,7 @@ class AdaptiveTab(VerticalScroll):
         with Vertical(id="editor_topbar"):
             with Horizontal(classes="topbar_title_row"):
                 yield Static("Adaptive Mode", classes="card_title")
+            yield Static("Provides the ability to toggle/set adaptive mode targets.", classes="field_hint")
             with Horizontal(classes="topbar_row"):
                 yield Select([(n, n) for n in names], prompt="Saved Presets",
                              id="adaptive_select", allow_blank=True)
@@ -126,6 +127,7 @@ class AdaptiveTab(VerticalScroll):
                 self._num_field("igpu_max"),
                 self._num_field("igpu_min"),
                 self._num_field("min_cpu_clk"),
+                Static("Notes: Ensure you balance CPU and iGPU clocks out for the best performance!", classes="field_hint"),
                 title="Turbo Boost Overdrive iGPU Settings", collapsed=True)
             if self._has_asus:
                 yield Collapsible(
@@ -139,6 +141,7 @@ class AdaptiveTab(VerticalScroll):
                                        "Enable adaptive NVIDIA GPU tuning.", False),
                     self._num_field("nv_max_clk"), self._num_field("nv_core_offset"),
                     self._num_field("nv_mem_offset"),
+                    Static("Warning: We are not liable for any damages to hardware or resulting instabilities caused by adjustment of frequencies and voltages.", classes="field_hint"),
                     title="NVIDIA GPU Tuning", collapsed=True)
 
     def on_mount(self) -> None:

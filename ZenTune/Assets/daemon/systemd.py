@@ -112,8 +112,10 @@ def restart_service() -> dict:
 
 def read_logs(lines: int = 200) -> str:
     if not is_available():
-        return "Logs are not available via journalctl on this system (no systemd).\n"
-        "View the terminal output where the daemon is running directly."
+        return (
+            "Logs are not available via journalctl on this system (no systemd).\n"
+            "View the terminal output where the daemon is running directly."
+        )
     try:
         out = subprocess.run(
             ["journalctl", "-u", SERVICE_NAME, "-n", str(lines), "--no-pager",

@@ -55,6 +55,7 @@ class PowerDaemon(CommandsMixin, LoopsMixin, AdaptiveMixin):
         self._running_loop = False
         self._last_logged_mode = ""
         self._last_ac_state: bool | None = None
+        self._last_resume_time: float = 0.0
         self._adaptive_thread: threading.Thread | None = None
         self._stop_adaptive_evt = threading.Event()
         self._adaptive_running = False

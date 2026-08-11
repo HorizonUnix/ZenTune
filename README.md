@@ -53,18 +53,6 @@ The first run walks you through setting up the daemon and detecting your hardwar
 
 ---
 
-## Star History
-
-<a href="https://www.star-history.com/?repos=HorizonUnix%2FZenTune&type=date&legend=top-left">
- <picture>
-   <source media="(prefers-color-scheme: dark)" srcset="https://api.star-history.com/chart?repos=HorizonUnix/ZenTune&type=date&theme=dark&legend=top-left" />
-   <source media="(prefers-color-scheme: light)" srcset="https://api.star-history.com/chart?repos=HorizonUnix/ZenTune&type=date&legend=top-left" />
-   <img alt="Star History Chart" src="https://api.star-history.com/chart?repos=HorizonUnix/ZenTune&type=date&legend=top-left" />
- </picture>
-</a>
-
----
-
 ## Preview
 
 <p align="left">

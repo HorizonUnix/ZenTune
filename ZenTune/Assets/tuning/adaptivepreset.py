@@ -10,12 +10,12 @@ ADAPTIVE_PRESETS_PATH = cfg.ADAPTIVE_PRESETS_PATH
 
 @dataclass
 class AdaptivePreset:
-    max_temp: int = 85
+    max_temp: int = 95
     power: int = 28
     co_max: int = 30
     igpu_min: int = 400
-    igpu_max: int = 2000
-    min_cpu_clk: int = 1200
+    igpu_max: int = 1900
+    min_cpu_clk: int = 1500
     enable_co: bool = False
     enable_igpu: bool = False
     enable_asus: bool = False

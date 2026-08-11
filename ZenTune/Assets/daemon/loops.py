@@ -13,6 +13,7 @@ _STOP_LOOP_TIMEOUT_S: int = 10
 _POWER_MONITOR_POLL_S: int = 2
 _SUSPEND_MONITOR_POLL_S: int = 1
 _SUSPEND_GAP_THRESHOLD_S: float = 1.0
+_POST_SUSPEND_WAIT_S: float = 5.0
 
 
 class LoopsMixin:
@@ -86,6 +87,13 @@ class LoopsMixin:
             try:
                 if self._adaptive_running:
                     continue
+                last_resume = getattr(self, "_last_resume_time", 0.0)
+                time_since_resume = time.monotonic() - last_resume
+                if time_since_resume < _POST_SUSPEND_WAIT_S:
+                    wait_sec = _POST_SUSPEND_WAIT_S - time_since_resume
+                    log.debug("Reapply loop waiting %.1fs post-resume before SMU apply...", wait_sec)
+                    if self._stop_evt.wait(wait_sec):
+                        break
                 on_ac = _on_ac()
                 eff_mode, eff_args = self._effective_mode_args(mode, args, automation, on_ac)
                 changed = eff_mode != self._last_logged_mode
@@ -128,6 +136,13 @@ class LoopsMixin:
                 if self._adaptive_running:
                     self._last_ac_state = _on_ac()
                     continue
+                last_resume = getattr(self, "_last_resume_time", 0.0)
+                time_since_resume = time.monotonic() - last_resume
+                if time_since_resume < _POST_SUSPEND_WAIT_S:
+                    wait_sec = _POST_SUSPEND_WAIT_S - time_since_resume
+                    log.debug("Power monitor waiting %.1fs post-resume before checking AC/Battery automations...", wait_sec)
+                    if self._stop_monitor_evt.wait(wait_sec):
+                        break
                 current_ac = _on_ac()
                 if current_ac != self._last_ac_state:
                     prev_state = "AC" if self._last_ac_state else "battery"
@@ -169,26 +184,44 @@ class LoopsMixin:
                 current_boottime_offset = _clock_boottime() - time.monotonic()
                 slept = current_boottime_offset - last_boottime_offset
                 if slept > _SUSPEND_GAP_THRESHOLD_S:
+                    self._last_resume_time = time.monotonic()
+                    log.info(
+                        "Woke from suspend (slept ~%s); waiting %.0fs before applying automations to prevent SMU panic...",
+                        _fmt_duration(slept), _POST_SUSPEND_WAIT_S,
+                    )
+                    if self._stop_suspend_evt.wait(_POST_SUSPEND_WAIT_S):
+                        break
                     cfg.load()
                     preset_name = cfg.get("Automations", "OnResume", "")
-                    if not preset_name:
-                        log.info(
-                            "Woke from suspend (slept ~%s), no On Resume preset configured.",
-                            _fmt_duration(slept),
-                        )
-                    else:
+                    if preset_name:
                         result = _resolve_preset_args(preset_name)
                         if result:
                             mode, args = result
                             self._apply_once(
                                 args, mode,
-                                reason=f"woke from suspend after ~{_fmt_duration(slept)}",
+                                reason=f"woke from suspend after ~{_fmt_duration(slept)} (OnResume)",
                             )
                             self._last_logged_mode = mode
                         else:
                             log.warning(
-                                "Woke from suspend, but the On Resume preset '%s' no longer exists; nothing applied.",
+                                "Woke from suspend, but the On Resume preset '%s' no longer exists.",
                                 _dn(preset_name),
+                            )
+                    else:
+                        current_ac = _on_ac()
+                        eff_mode, eff_args = self._effective_mode_args(
+                            "", "", automation=True, on_ac=current_ac, keep_on_empty=True
+                        )
+                        if eff_args:
+                            self._apply_once(
+                                eff_args, eff_mode,
+                                reason=f"woke from suspend after ~{_fmt_duration(slept)} ({'OnAC' if current_ac else 'OnBattery'})",
+                            )
+                            self._last_logged_mode = eff_mode
+                        else:
+                            log.info(
+                                "Woke from suspend (slept ~%s), no On Resume or power slot automation configured.",
+                                _fmt_duration(slept),
                             )
                 last_boottime_offset = current_boottime_offset
             except Exception as exc:

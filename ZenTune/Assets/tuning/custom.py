@@ -8,13 +8,13 @@ from Assets.core import config as cfg
 
 FIELD_DEFS: list[dict[str, Any]] = [
     {
-        "key": "tctl_temp", "label": "APU Temp Limit", "arg": "--tctl-temp",
+        "key": "tctl_temp", "label": "Temperature Limit", "arg": "--tctl-temp",
         "unit": "°C", "default": 95, "min": 10, "max": 105, "step": 1,
         "enabled": False, "section": 1,
         "hint": "Controls the temperature limit at which the APU starts soft throttling",
     },
     {
-        "key": "apu_skin_temp", "label": "Skin Temp Limit", "arg": "--apu-skin-temp",
+        "key": "apu_skin_temp", "label": "Skin Temperature Limit", "arg": "--apu-skin-temp",
         "unit": "°C", "default": 45, "min": 8, "max": 105, "step": 1,
         "enabled": False, "section": 1,
         "hint": "Controls the laptop chassis temperature limit at which the APU starts throttling",
@@ -86,14 +86,14 @@ FIELD_DEFS: list[dict[str, Any]] = [
         "hint": "Controls the iGPU's Electrical Design Current limit",
     },
     {
-        "key": "max_gfxclk", "label": "Max iGPU Clock", "arg": "--max-gfxclk",
-        "unit": "MHz", "default": 1000, "min": 400, "max": 2000, "step": 25,
+        "key": "max_gfxclk", "label": "Soft Maximum iGPU Clock", "arg": "--max-gfxclk",
+        "unit": "MHz", "default": 1000, "min": 400, "max": 3400, "step": 25,
         "enabled": False, "section": 4,
         "hint": "Controls the maximum soft clock target of the iGPU. This only works when within your APUs specification.",
     },
     {
-        "key": "min_gfxclk", "label": "Min iGPU Clock", "arg": "--min-gfxclk",
-        "unit": "MHz", "default": 400, "min": 400, "max": 2000, "step": 25,
+        "key": "min_gfxclk", "label": "Soft Minimum iGPU Clock", "arg": "--min-gfxclk",
+        "unit": "MHz", "default": 400, "min": 200, "max": 3400, "step": 25,
         "enabled": False, "section": 4,
         "hint": "Controls the minimum soft clock target of the iGPU. This only works when within your APUs specification.",
     },
@@ -109,7 +109,7 @@ FIELD_DEFS: list[dict[str, Any]] = [
         "unit": "", "default": 0, "min": 0, "max": 2, "step": 1,
         "enabled": False, "section": 2,
         "choices": ["Auto", "Power Saving", "Performance"],
-        "hint": "Controls the manual boost profile, which impacts boost delay.",
+        "hint": "Provides the ability to set a manual boost profile which impact on boost delay.",
     },
     {
         "key": "pbo_scalar", "label": "PBO Scalar", "arg": "--pbo-scalar",
@@ -118,73 +118,73 @@ FIELD_DEFS: list[dict[str, Any]] = [
         "hint": "Allows control to change the PBO Scalar which adjusts the FIT/FITness/FailuresInTime limit by the set amount",
     },
     {
-        "key": "coall", "label": "All Core CO", "arg": "--set-coall",
+        "key": "coall", "label": "All Core Offset", "arg": "--set-coall",
         "unit": "", "default": 0, "min": -50, "max": 30, "step": 1, "signed_co": True,
         "enabled": False, "section": 5,
         "hint": "Allows control to change the all core Curve Optimiser Frequency/Voltage curve offset",
     },
     {
-        "key": "cogfx", "label": "iGPU CO", "arg": "--set-cogfx",
+        "key": "cogfx", "label": "iGPU Offset", "arg": "--set-cogfx",
         "unit": "", "default": 0, "min": -50, "max": 30, "step": 1, "signed_co": True,
         "enabled": False, "section": 5,
         "hint": "Allows control to change the iGPU Curve Optimiser Frequency/Voltage curve offset",
     },
     {
-        "key": "max_cpuclk", "label": "Max CPU Clock", "arg": "--max-cpuclk",
+        "key": "max_cpuclk", "label": "Soft Maximum CPU Clock", "arg": "--max-cpuclk",
         "unit": "MHz", "default": 3200, "min": 400, "max": 4200, "step": 25,
         "enabled": False, "section": 7,
         "hint": "Controls the maximum soft clock target of the CPU. This only works when within your APUs specification.",
     },
     {
-        "key": "min_cpuclk", "label": "Min CPU Clock", "arg": "--min-cpuclk",
+        "key": "min_cpuclk", "label": "Soft Minimum CPU Clock", "arg": "--min-cpuclk",
         "unit": "MHz", "default": 400, "min": 400, "max": 2000, "step": 25,
         "enabled": False, "section": 7,
         "hint": "Controls the minimum soft clock target of the CPU. This only works when within your APUs specification.",
     },
     {
-        "key": "max_fclk", "label": "Max Fclk", "arg": "--max-fclk-frequency",
+        "key": "max_fclk", "label": "Soft Maximum Infinity Fabric Clock", "arg": "--max-fclk-frequency",
         "unit": "MHz", "default": 1600, "min": 400, "max": 2000, "step": 25,
         "enabled": False, "section": 7,
         "hint": "Controls the maximum soft clock target of the Infinity Fabric. This only works when within your APUs specification.",
     },
     {
-        "key": "min_fclk", "label": "Min Fclk", "arg": "--min-fclk-frequency",
+        "key": "min_fclk", "label": "Soft Minimum Infinity Fabric Clock", "arg": "--min-fclk-frequency",
         "unit": "MHz", "default": 400, "min": 400, "max": 2000, "step": 25,
         "enabled": False, "section": 7,
         "hint": "Controls the minimum soft clock target of the Infinity Fabric. This only works when within your APUs specification.",
     },
     {
-        "key": "max_socclk", "label": "Max SoC Clock", "arg": "--max-socclk-frequency",
+        "key": "max_socclk", "label": "Soft Maximum SoC Clock", "arg": "--max-socclk-frequency",
         "unit": "MHz", "default": 1600, "min": 400, "max": 2000, "step": 25,
         "enabled": False, "section": 7,
         "hint": "Controls the maximum soft clock target of the SoC. This only works when within your APUs specification.",
     },
     {
-        "key": "min_socclk", "label": "Min SoC Clock", "arg": "--min-socclk-frequency",
+        "key": "min_socclk", "label": "Soft Minimum SoC Clock", "arg": "--min-socclk-frequency",
         "unit": "MHz", "default": 400, "min": 400, "max": 2000, "step": 25,
         "enabled": False, "section": 7,
         "hint": "Controls the minimum soft clock target of the SoC. This only works when within your APUs specification.",
     },
     {
-        "key": "max_vcn", "label": "Max VCN Clock", "arg": "--max-vcn",
+        "key": "max_vcn", "label": "Soft Maximum VCN Clock", "arg": "--max-vcn",
         "unit": "MHz", "default": 1200, "min": 400, "max": 2000, "step": 25,
         "enabled": False, "section": 7,
         "hint": "Controls the maximum soft clock target of the Video Core Next. This only works when within your APUs specification.",
     },
     {
-        "key": "min_vcn", "label": "Min VCN Clock", "arg": "--min-vcn",
+        "key": "min_vcn", "label": "Soft Minimum VCN Clock", "arg": "--min-vcn",
         "unit": "MHz", "default": 400, "min": 400, "max": 2000, "step": 25,
         "enabled": False, "section": 7,
         "hint": "Controls the minimum soft clock target of the Video Core Next. This only works when within your APUs specification.",
     },
     {
-        "key": "max_lclk", "label": "Max Data Clock", "arg": "--max-lclk",
+        "key": "max_lclk", "label": "Soft Maximum Data Launch Clock", "arg": "--max-lclk",
         "unit": "MHz", "default": 1600, "min": 400, "max": 4200, "step": 25,
         "enabled": False, "section": 7,
         "hint": "Controls the maximum soft clock target of the Data Launch Clock. This only works when within your APUs specification.",
     },
     {
-        "key": "min_lclk", "label": "Min Data Clock", "arg": "--min-lclk",
+        "key": "min_lclk", "label": "Soft Minimum Data Launch Clock", "arg": "--min-lclk",
         "unit": "MHz", "default": 400, "min": 400, "max": 2000, "step": 25,
         "enabled": False, "section": 7,
         "hint": "Controls the minimum soft clock target of the Data Launch Clock. This only works when within your APUs specification.",
@@ -193,7 +193,7 @@ FIELD_DEFS: list[dict[str, Any]] = [
 
 FIELD_DEFS_DT: list[dict[str, Any]] = [
     {
-        "key": "tctl_temp", "label": "CPU Temp Limit", "arg": "--tctl-temp",
+        "key": "tctl_temp", "label": "Temperature Limit", "arg": "--tctl-temp",
         "unit": "°C", "default": 85, "min": 10, "max": 95, "step": 1,
         "enabled": False, "section": 1,
         "hint": "Controls the temperature limit at which the CPU starts hard throttling",
@@ -223,13 +223,13 @@ FIELD_DEFS_DT: list[dict[str, Any]] = [
         "hint": "Allows control to change the PBO Scalar which adjusts the FIT/FITness/FailuresInTime limit by the set amount",
     },
     {
-        "key": "coall", "label": "All Core CO", "arg": "--set-coall",
+        "key": "coall", "label": "All Core Offset", "arg": "--set-coall",
         "unit": "", "default": 0, "min": -50, "max": 30, "step": 1, "signed_co": True,
         "enabled": False, "section": 3,
         "hint": "Allows control to change the all core Curve Optimiser Frequency/Voltage curve offset",
     },
     {
-        "key": "cogfx", "label": "iGPU CO", "arg": "--set-cogfx",
+        "key": "cogfx", "label": "iGPU Offset", "arg": "--set-cogfx",
         "unit": "", "default": 0, "min": -50, "max": 30, "step": 1, "signed_co": True,
         "enabled": False, "section": 3,
         "hint": "Allows control to change the iGPU Curve Optimiser Frequency/Voltage curve offset",
@@ -279,7 +279,7 @@ _OC_FIELDS: list[dict[str, Any]] = [
         "key": "oc_clk", "label": "CPU Clocks", "arg": "--oc-clk",
         "unit": "MHz", "default": 3200, "min": 400, "max": 8000, "step": 25,
         "enabled": False, "section": OC_SECTION,
-        "hint": "Controls the static CPU clock",
+        "hint": "Provides the ability to set a static CPU clock",
     },
     {
         "key": "oc_volt", "label": "CPU VID", "arg": "--oc-volt",
@@ -291,19 +291,19 @@ _OC_FIELDS: list[dict[str, Any]] = [
 
 _NV_FIELDS: list[dict[str, Any]] = [
     {
-        "key": "nv_max_clk", "label": "Max GPU Clock", "arg": "--_nv",
+        "key": "nv_max_clk", "label": "Frequency-Adjusted Voltage Limit", "arg": "--_nv",
         "unit": "MHz", "default": 4000, "min": 400, "max": 4000, "step": 5,
         "enabled": False, "section": NV_SECTION, "nvidia_only": True,
         "hint": "Controls the maximum voltage your GPU will run within the Frequency/Voltage curve based on clock speed. You can undervolt your NVIDIA GPU by lowering this clock speed below stock and increasing the core clock offset. Start at your GPU's rated boost clock and work down. To reset it, set it to the maximum possible clock the slider allows.",
     },
     {
-        "key": "nv_core_offset", "label": "GPU Core Offset", "arg": "--_nv",
+        "key": "nv_core_offset", "label": "GPU Core Clock Offset", "arg": "--_nv",
         "unit": "MHz", "default": 0, "min": -1000, "max": 4000, "step": 5,
         "enabled": False, "section": NV_SECTION, "nvidia_only": True,
         "hint": "Controls the clock offset for your NVIDIA GPU's core clock",
     },
     {
-        "key": "nv_mem_offset", "label": "GPU Mem Offset", "arg": "--_nv",
+        "key": "nv_mem_offset", "label": "GPU Memory Clock Offset", "arg": "--_nv",
         "unit": "MHz", "default": 0, "min": -1000, "max": 4000, "step": 5,
         "enabled": False, "section": NV_SECTION, "nvidia_only": True,
         "hint": "Controls the clock offset for your NVIDIA GPU's VRAM clock",
@@ -322,35 +322,35 @@ _SYS_FIELDS: list[dict[str, Any]] = [
         "unit": "", "default": 1, "min": 0, "max": 2, "step": 1,
         "enabled": False, "section": SYS_SECTION, "system_check": "power_profile",
         "choices": ["Power Saver", "Balanced", "Performance"],
-        "hint": "Controls the system power profile to prioritise either power efficiency or performance, the Linux equivalent of the Windows power mode",
+        "hint": "Provides the ability to change the power profile from a preset.",
     },
     {
         "key": "asus_mode", "label": "ASUS Performance Mode", "arg": "--sys-asus-mode",
         "unit": "", "default": 1, "min": 0, "max": 2, "step": 1,
         "enabled": False, "section": SYS_SECTION, "system_check": "asus",
         "choices": ["Silent", "Balanced", "Turbo"],
-        "hint": "Controls the ASUS performance mode, like the Silent, Balanced and Turbo modes within Armoury Crate",
+        "hint": "Provides the ability to set an ASUS power profile.",
     },
     {
         "key": "asus_gpu_eco", "label": "ASUS GPU Eco", "arg": "--sys-asus-eco",
         "unit": "", "default": 0, "min": 0, "max": 1, "step": 1,
         "enabled": False, "section": SYS_SECTION, "system_check": "asus_eco",
         "choices": ["dGPU On", "dGPU Off (Eco)"],
-        "hint": "Controls the power state of the dGPU, like the Eco mode within Armoury Crate, requires the dGPU to be idle and the MUX set to Optimus",
+        "hint": "Provides the ability to toggle iGPU only mode on/off.",
     },
     {
         "key": "asus_gpu_mux", "label": "ASUS GPU MUX", "arg": "--sys-asus-mux",
         "unit": "", "default": 1, "min": 0, "max": 1, "step": 1,
         "enabled": False, "section": SYS_SECTION, "system_check": "asus_mux",
         "choices": ["dGPU (Ultimate)", "Optimus (Hybrid)"],
-        "hint": "Controls the GPU MUX switch between dGPU (Ultimate) and Optimus (Hybrid) mode, requires a system reboot to take effect",
+        "hint": "Provides the ability to manually toggle MUX switch on/off.",
     },
     {
         "key": "ccd_affinity", "label": "CCD Affinity", "arg": "--sys-ccd-affinity",
         "unit": "", "default": 0, "min": 0, "max": 2, "step": 1,
         "enabled": False, "section": SYS_SECTION, "system_check": "ccd",
         "choices": ["All Cores", "CCD1 Only", "CCD2 Only"],
-        "hint": "Allows control to pin applications to a single CCD, useful to keep games on the V-Cache die of X3D CPUs",
+        "hint": "Directs threads to selected CCDs, trimming cross-die traffic and fine-tuning performance.",
     },
 ]
 
@@ -371,24 +371,24 @@ APU_SECTION_TITLES = {
     1: "APU Temperature Tuning",
     2: "APU Power Tuning",
     3: "APU VRM Tuning",
-    4: "iGPU Tuning",
-    5: "AMD Curve Optimiser",
-    6: "AMD Per-Core Curve Optimiser",
-    7: "APU Soft Clock Limit Tuning",
-    OC_SECTION: "AMD Ryzen CPU Tuning",
+    4: "APU iGPU Clock Tuning",
+    5: "Curve Optimizer",
+    6: "APU Core Curve Optimizer",
+    7: "Soft Clock Tuning",
+    OC_SECTION: "Manual CPU Clock/Voltage Overclocking",
     NV_SECTION: "NVIDIA GPU Tuning",
-    SYS_SECTION: "System",
+    SYS_SECTION: "System Tuning",
 }
 
 DT_SECTION_NAMES = {1: "Thermal", 2: "Power", 3: "PBO/CO", 4: "CO Per-Core", OC_SECTION: "OC", NV_SECTION: "NV GPU", SYS_SECTION: "System"}
 DT_SECTION_TITLES = {
     1: "CPU Temperature Tuning",
     2: "CPU Power Tuning",
-    3: "AMD Precision Boost Overdrive",
-    4: "AMD Per-Core Curve Optimiser",
-    OC_SECTION: "AMD Ryzen CPU Tuning",
+    3: "Curve Optimizer",
+    4: "CPU Core Curve Optimizer",
+    OC_SECTION: "Manual CPU Clock/Voltage Overclocking",
     NV_SECTION: "NVIDIA GPU Tuning",
-    SYS_SECTION: "System",
+    SYS_SECTION: "System Tuning",
 }
 
 APU_PER_CORE_SECTION = 6

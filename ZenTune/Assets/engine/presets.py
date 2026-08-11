@@ -16,7 +16,7 @@ RYZEN_FAMILY = [
 @dataclass
 class Preset:
     Eco: str
-    Balance: str
+    Balanced: str
     Performance: str
     Extreme: str
 
@@ -63,21 +63,21 @@ def _variant_preset(variant: str) -> Preset | None:
         case "AMDFrameworkLaptop16Ryzen7040_RX7700S":
             return Preset(
                 Eco="--tctl-temp=100 --chtc-temp=100 --apu-skin-temp=45 --stapm-limit=30000 --fast-limit=35000 --slow-limit=30000 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000 --sys-power-profile=0",
-                Balance="--tctl-temp=100 --chtc-temp=100 --apu-skin-temp=50 --stapm-limit=95000 --fast-limit=95000 --slow-limit=95000 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000 --sys-power-profile=1",
+                Balanced="--tctl-temp=100 --chtc-temp=100 --apu-skin-temp=50 --stapm-limit=95000 --fast-limit=95000 --slow-limit=95000 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000 --sys-power-profile=1",
                 Performance="--tctl-temp=100 --chtc-temp=100 --apu-skin-temp=50 --stapm-limit=100000 --fast-limit=100000 --slow-limit=120000 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000 --sys-power-profile=2",
                 Extreme="--tctl-temp=100 --chtc-temp=100 --apu-skin-temp=50 --stapm-limit=120000 --fast-limit=140000 --slow-limit=120000 --vrm-current=200000 --vrmmax-current=200000 --vrmsoc-current=200000 --vrmsocmax-current=200000 --sys-power-profile=2",
             )
         case "AMDFrameworkLaptop16Ryzen7040":
             return Preset(
                 Eco="--tctl-temp=100 --chtc-temp=100 --apu-skin-temp=45 --stapm-limit=6000 --fast-limit=8000 --slow-limit=6000 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000 --sys-power-profile=0",
-                Balance="--tctl-temp=100 --chtc-temp=100 --apu-skin-temp=50 --stapm-limit=35000 --fast-limit=45000 --slow-limit=38000 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000 --sys-power-profile=1",
+                Balanced="--tctl-temp=100 --chtc-temp=100 --apu-skin-temp=50 --stapm-limit=35000 --fast-limit=45000 --slow-limit=38000 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000 --sys-power-profile=1",
                 Performance="--tctl-temp=100 --chtc-temp=100 --apu-skin-temp=50 --stapm-limit=45000 --fast-limit=55000 --slow-limit=50000 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000 --sys-power-profile=2",
                 Extreme="--tctl-temp=100 --chtc-temp=100 --apu-skin-temp=50 --stapm-limit=55000 --fast-limit=70000 --slow-limit=65000 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000 --sys-power-profile=2",
             )
         case "AMDFrameworkLaptop13Ryzen7040_RyzenAI300":
             return Preset(
                 Eco="--tctl-temp=100 --chtc-temp=100 --apu-skin-temp=45 --stapm-limit=8000 --fast-limit=10000 --slow-limit=8000 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000 --sys-power-profile=0",
-                Balance="--tctl-temp=100 --chtc-temp=100 --apu-skin-temp=50 --stapm-limit=15000 --fast-limit=18000 --slow-limit=15000 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000 --sys-power-profile=1",
+                Balanced="--tctl-temp=100 --chtc-temp=100 --apu-skin-temp=50 --stapm-limit=15000 --fast-limit=18000 --slow-limit=15000 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000 --sys-power-profile=1",
                 Performance="--tctl-temp=100 --chtc-temp=100 --apu-skin-temp=50 --stapm-limit=28000 --fast-limit=42000 --slow-limit=28000 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000 --sys-power-profile=2",
                 Extreme="--tctl-temp=100 --chtc-temp=100 --apu-skin-temp=50 --stapm-limit=35000 --fast-limit=60000 --slow-limit=35000 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000 --sys-power-profile=2",
             )
@@ -88,7 +88,7 @@ def _apu_preset(family: str, cpu_model: str) -> Preset:
     if family in ("DragonRange", "FireRange"):
         return Preset(
             Eco="--tctl-temp=95 --chtc-temp=95 --stapm-limit=35000 --fast-limit=45000 --stapm-time=64 --slow-limit=35000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
-            Balance="--tctl-temp=95 --chtc-temp=95 --stapm-limit=65000 --fast-limit=75000 --stapm-time=64 --slow-limit=65000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+            Balanced="--tctl-temp=95 --chtc-temp=95 --stapm-limit=65000 --fast-limit=75000 --stapm-time=64 --slow-limit=65000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
             Performance="--tctl-temp=95 --chtc-temp=95 --stapm-limit=100000 --fast-limit=120000 --stapm-time=64 --slow-limit=100000 --slow-time=128 --vrm-current=240000 --vrmmax-current=240000 --vrmsoc-current=240000 --vrmsocmax-current=240000",
             Extreme="--tctl-temp=95 --chtc-temp=95 --stapm-limit=125000 --fast-limit=145000 --stapm-time=64 --slow-limit=125000 --slow-time=128 --vrm-current=240000 --vrmmax-current=240000 --vrmsoc-current=240000 --vrmsocmax-current=240000",
         )
@@ -96,7 +96,7 @@ def _apu_preset(family: str, cpu_model: str) -> Preset:
     if family == "StrixHalo":
         return Preset(
             Eco="--tctl-temp=95 --chtc-temp=95 --stapm-limit=18000 --fast-limit=25000 --stapm-time=64 --slow-limit=18000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
-            Balance="--tctl-temp=95 --chtc-temp=95 --stapm-limit=55000 --fast-limit=65000 --stapm-time=64 --slow-limit=55000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+            Balanced="--tctl-temp=95 --chtc-temp=95 --stapm-limit=55000 --fast-limit=65000 --stapm-time=64 --slow-limit=55000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
             Performance="--tctl-temp=95 --chtc-temp=95 --stapm-limit=100000 --fast-limit=120000 --stapm-time=64 --slow-limit=100000 --slow-time=128 --vrm-current=240000 --vrmmax-current=240000 --vrmsoc-current=240000 --vrmsocmax-current=240000",
             Extreme="--tctl-temp=95 --chtc-temp=95 --stapm-limit=145000 --fast-limit=165000 --stapm-time=64 --slow-limit=145000 --slow-time=128 --vrm-current=240000 --vrmmax-current=240000 --vrmsoc-current=240000 --vrmsocmax-current=240000",
         )
@@ -113,7 +113,7 @@ def _apu_preset(family: str, cpu_model: str) -> Preset:
 def _apu_u_e_ce() -> Preset:
     return Preset(
         Eco="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=6000 --fast-limit=8000 --stapm-time=64 --slow-limit=6000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
-        Balance="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=15000 --fast-limit=18000 --stapm-time=64 --slow-limit=16000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+        Balanced="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=15000 --fast-limit=18000 --stapm-time=64 --slow-limit=16000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
         Performance="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=18000 --fast-limit=20000 --stapm-time=64 --slow-limit=19000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
         Extreme="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=28000 --fast-limit=28000 --stapm-time=64 --slow-limit=28000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
     )
@@ -126,7 +126,7 @@ def _pre_matisse_apu(cpu_model: str) -> Preset:
     if "H" in cpu_model:
         return Preset(
             Eco="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=6000 --fast-limit=8000 --stapm-time=64 --slow-limit=6000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
-            Balance="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=30000 --fast-limit=35000 --stapm-time=64 --slow-limit=33000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+            Balanced="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=30000 --fast-limit=35000 --stapm-time=64 --slow-limit=33000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
             Performance="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=35000 --fast-limit=42000 --stapm-time=64 --slow-limit=40000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
             Extreme="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=56000 --fast-limit=56000 --stapm-time=64 --slow-limit=56000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
         )
@@ -134,7 +134,7 @@ def _pre_matisse_apu(cpu_model: str) -> Preset:
     if "GE" in cpu_model:
         return Preset(
             Eco="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=15000 --fast-limit=15000 --stapm-time=64 --slow-limit=18000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
-            Balance="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=45000 --fast-limit=55000 --stapm-time=64 --slow-limit=48000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+            Balanced="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=45000 --fast-limit=55000 --stapm-time=64 --slow-limit=48000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
             Performance="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=55000 --fast-limit=65000 --stapm-time=64 --slow-limit=60000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
             Extreme="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=65000 --fast-limit=80000 --stapm-time=64 --slow-limit=75000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
         )
@@ -142,7 +142,7 @@ def _pre_matisse_apu(cpu_model: str) -> Preset:
     if "G" in cpu_model:
         return Preset(
             Eco="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=15000 --fast-limit=18000 --stapm-time=64 --slow-limit=18000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
-            Balance="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=65000 --fast-limit=75000 --stapm-time=64 --slow-limit=65000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+            Balanced="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=65000 --fast-limit=75000 --stapm-time=64 --slow-limit=65000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
             Performance="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=80000 --fast-limit=75000 --stapm-time=64 --slow-limit=75000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
             Extreme="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=85000 --fast-limit=95000 --stapm-time=64 --slow-limit=90000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
         )
@@ -154,7 +154,7 @@ def _post_matisse_apu(cpu_model: str) -> Preset:
     if "U" in cpu_model or ("AI" in cpu_model and "HX" not in cpu_model):
         return Preset(
             Eco="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=6000 --fast-limit=8000 --stapm-time=64 --slow-limit=6000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
-            Balance="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=22000 --fast-limit=24000 --stapm-time=64 --slow-limit=22000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+            Balanced="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=22000 --fast-limit=24000 --stapm-time=64 --slow-limit=22000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
             Performance="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=28000 --fast-limit=28000 --stapm-time=64 --slow-limit=28000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
             Extreme="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=30000 --fast-limit=34000 --stapm-time=64 --slow-limit=32000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
         )
@@ -162,7 +162,7 @@ def _post_matisse_apu(cpu_model: str) -> Preset:
     if "HX" in cpu_model:
         return Preset(
             Eco="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=6000 --fast-limit=8000 --stapm-time=64 --slow-limit=6000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
-            Balance="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=55000 --fast-limit=65000 --stapm-time=64 --slow-limit=55000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+            Balanced="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=55000 --fast-limit=65000 --stapm-time=64 --slow-limit=55000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
             Performance="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=78000 --fast-limit=70000 --stapm-time=64 --slow-limit=70000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
             Extreme="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=85000 --fast-limit=95000 --stapm-time=64 --slow-limit=90000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
         )
@@ -170,7 +170,7 @@ def _post_matisse_apu(cpu_model: str) -> Preset:
     if "HS" in cpu_model:
         return Preset(
             Eco="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=6000 --fast-limit=8000 --stapm-time=64 --slow-limit=6000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
-            Balance="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=35000 --fast-limit=45000 --stapm-time=64 --slow-limit=38000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+            Balanced="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=35000 --fast-limit=45000 --stapm-time=64 --slow-limit=38000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
             Performance="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=45000 --fast-limit=55000 --stapm-time=64 --slow-limit=50000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
             Extreme="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=55000 --fast-limit=70000 --stapm-time=64 --slow-limit=65000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
         )
@@ -178,7 +178,7 @@ def _post_matisse_apu(cpu_model: str) -> Preset:
     if "H" in cpu_model:
         return Preset(
             Eco="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=6000 --fast-limit=8000 --stapm-time=64 --slow-limit=6000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
-            Balance="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=45000 --fast-limit=55000 --stapm-time=64 --slow-limit=48000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+            Balanced="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=45000 --fast-limit=55000 --stapm-time=64 --slow-limit=48000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
             Performance="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=55000 --fast-limit=65000 --stapm-time=64 --slow-limit=60000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
             Extreme="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=65000 --fast-limit=80000 --stapm-time=64 --slow-limit=75000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
         )
@@ -186,7 +186,7 @@ def _post_matisse_apu(cpu_model: str) -> Preset:
     if "GE" in cpu_model:
         return Preset(
             Eco="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=15000 --fast-limit=15000 --stapm-time=64 --slow-limit=18000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
-            Balance="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=45000 --fast-limit=55000 --stapm-time=64 --slow-limit=48000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+            Balanced="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=45000 --fast-limit=55000 --stapm-time=64 --slow-limit=48000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
             Performance="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=55000 --fast-limit=65000 --stapm-time=64 --slow-limit=60000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
             Extreme="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=65000 --fast-limit=80000 --stapm-time=64 --slow-limit=75000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
         )
@@ -194,7 +194,7 @@ def _post_matisse_apu(cpu_model: str) -> Preset:
     if "G" in cpu_model:
         return Preset(
             Eco="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=15000 --fast-limit=18000 --stapm-time=64 --slow-limit=18000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
-            Balance="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=65000 --fast-limit=75000 --stapm-time=64 --slow-limit=65000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+            Balanced="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=65000 --fast-limit=75000 --stapm-time=64 --slow-limit=65000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
             Performance="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=80000 --fast-limit=75000 --stapm-time=64 --slow-limit=75000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
             Extreme="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=85000 --fast-limit=95000 --stapm-time=64 --slow-limit=90000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
         )
@@ -222,7 +222,7 @@ def _desktop_preset(family: str, cpu_model: str) -> Preset:
 def _dt_e() -> Preset:
     return Preset(
         Eco="--tctl-temp=95 --ppt-limit=45000 --edc-limit=90000 --tdc-limit=90000",
-        Balance="--tctl-temp=95 --ppt-limit=65000 --edc-limit=90000 --tdc-limit=90000",
+        Balanced="--tctl-temp=95 --ppt-limit=65000 --edc-limit=90000 --tdc-limit=90000",
         Performance="--tctl-temp=95 --ppt-limit=95000 --edc-limit=122000 --tdc-limit=122000",
         Extreme="--tctl-temp=95 --ppt-limit=105000 --edc-limit=142000 --tdc-limit=142000",
     )
@@ -231,7 +231,7 @@ def _dt_e() -> Preset:
 def _dt_x3d() -> Preset:
     return Preset(
         Eco="--tctl-temp=85 --ppt-limit=65000 --edc-limit=90000 --tdc-limit=90000",
-        Balance="--tctl-temp=85 --ppt-limit=85000 --edc-limit=120000 --tdc-limit=120000",
+        Balanced="--tctl-temp=85 --ppt-limit=85000 --edc-limit=120000 --tdc-limit=120000",
         Performance="--tctl-temp=85 --ppt-limit=105000 --edc-limit=142000 --tdc-limit=142000",
         Extreme="--tctl-temp=85 --ppt-limit=140000 --edc-limit=190000 --tdc-limit=190000",
     )
@@ -241,13 +241,13 @@ def _dt_x9(pre_raphael: bool) -> Preset:
     if pre_raphael:
         return Preset(
             Eco="--tctl-temp=95 --ppt-limit=65000 --edc-limit=90000 --tdc-limit=90000",
-            Balance="--tctl-temp=95 --ppt-limit=95000 --edc-limit=130000 --tdc-limit=130000",
+            Balanced="--tctl-temp=95 --ppt-limit=95000 --edc-limit=130000 --tdc-limit=130000",
             Performance="--tctl-temp=95 --ppt-limit=125000 --edc-limit=142000 --tdc-limit=142000",
             Extreme="--tctl-temp=95 --ppt-limit=170000 --edc-limit=230000 --tdc-limit=230000",
         )
     return Preset(
         Eco="--tctl-temp=95 --ppt-limit=65000 --edc-limit=90000 --tdc-limit=90000",
-        Balance="--tctl-temp=95 --ppt-limit=105000 --edc-limit=145000 --tdc-limit=145000",
+        Balanced="--tctl-temp=95 --ppt-limit=105000 --edc-limit=145000 --tdc-limit=145000",
         Performance="--tctl-temp=95 --ppt-limit=145000 --edc-limit=210000 --tdc-limit=210000",
         Extreme="--tctl-temp=95 --ppt-limit=230000 --edc-limit=310000 --tdc-limit=310000",
     )
@@ -256,7 +256,7 @@ def _dt_x9(pre_raphael: bool) -> Preset:
 def _dt_x() -> Preset:
     return Preset(
         Eco="--tctl-temp=95 --ppt-limit=65000 --edc-limit=90000 --tdc-limit=90000",
-        Balance="--tctl-temp=95 --ppt-limit=88000 --edc-limit=125000 --tdc-limit=125000",
+        Balanced="--tctl-temp=95 --ppt-limit=88000 --edc-limit=125000 --tdc-limit=125000",
         Performance="--tctl-temp=95 --ppt-limit=105000 --edc-limit=142000 --tdc-limit=142000",
         Extreme="--tctl-temp=95 --ppt-limit=140000 --edc-limit=190000 --tdc-limit=190000",
     )
@@ -265,7 +265,7 @@ def _dt_x() -> Preset:
 def _dt_default() -> Preset:
     return Preset(
         Eco="--tctl-temp=95 --ppt-limit=45000 --edc-limit=90000 --tdc-limit=90000",
-        Balance="--tctl-temp=95 --ppt-limit=65000 --edc-limit=90000 --tdc-limit=90000",
+        Balanced="--tctl-temp=95 --ppt-limit=65000 --edc-limit=90000 --tdc-limit=90000",
         Performance="--tctl-temp=95 --ppt-limit=88000 --edc-limit=125000 --tdc-limit=125000",
         Extreme="--tctl-temp=95 --ppt-limit=105000 --edc-limit=142000 --tdc-limit=142000",
     )
@@ -273,7 +273,7 @@ def _dt_default() -> Preset:
 
 def _desktop_standard() -> Preset:
     return Preset(
-        Eco="--tctl-temp=95", Balance="--tctl-temp=95",
+        Eco="--tctl-temp=95", Balanced="--tctl-temp=95",
         Performance="--tctl-temp=95", Extreme="--tctl-temp=95",
     )
 

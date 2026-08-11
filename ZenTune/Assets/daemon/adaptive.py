@@ -2,13 +2,14 @@ from __future__ import annotations
 
 import os
 import threading
+import time
 from dataclasses import fields as dataclass_fields
 from pathlib import Path
 
 from Assets.core import config as cfg
 from Assets.core import platform as plat
 from Assets.core.platform import RUNTIME_DIR
-from Assets.daemon.loops import _STOP_LOOP_TIMEOUT_S
+from Assets.daemon.loops import _STOP_LOOP_TIMEOUT_S, _POST_SUSPEND_WAIT_S
 from Assets.daemon.util import log
 
 ADAPTIVE_SESSION_FILE = f"{RUNTIME_DIR}/{cfg.APP_NAME}_adaptive"
@@ -87,6 +88,13 @@ class AdaptiveMixin:
         sensors.sample()
         while not self._stop_adaptive_evt.wait(interval):
             try:
+                last_resume = getattr(self, "_last_resume_time", 0.0)
+                time_since_resume = time.monotonic() - last_resume
+                if time_since_resume < _POST_SUSPEND_WAIT_S:
+                    wait_sec = _POST_SUSPEND_WAIT_S - time_since_resume
+                    log.debug("Adaptive loop waiting %.1fs post-resume before SMU apply...", wait_sec)
+                    if self._stop_adaptive_evt.wait(wait_sec):
+                        break
                 sample = sensors.sample()
                 merged = self._adaptive_tick_args(sample)
                 if merged:

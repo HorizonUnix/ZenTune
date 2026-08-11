@@ -1,3 +1,8 @@
+## [2.0.2]
+
+- Added a 5-second post-wake delay for all automations and the reapply loop before executing SMU commands to prevent system hangs and SMU panics, especially on Hackintosh setups.
+- Adjusted setting names, section titles, tooltips, ranges, and defaults across Premade Presets, Custom Presets, Adaptive Mode, and Automations
+
 ## [2.0.1]
 
 - Resolved issue #101

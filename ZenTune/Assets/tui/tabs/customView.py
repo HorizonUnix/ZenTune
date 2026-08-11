@@ -42,6 +42,7 @@ class CustomEditor(VerticalScroll):
         sel_kwargs = {"value": self.preset_name} if self.preset_name in names else {}
         with Vertical(id="editor_topbar"):
             yield Static("Custom Presets", classes="card_title")
+            yield Static("Create, edit and apply a hardware tuning preset. Enable only the settings that should be included.", classes="field_hint")
             with Horizontal(classes="topbar_row"):
                 yield Select([(n, n) for n in names], prompt="Saved Presets",
                              id="preset_select", allow_blank=True, **sel_kwargs)

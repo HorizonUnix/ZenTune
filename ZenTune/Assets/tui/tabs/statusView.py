@@ -50,14 +50,14 @@ class StatusTab(VerticalScroll):
         self._watch = None
 
     def _reschedule(self) -> None:
-        from Assets.tui.helpers import on_ac
+        from Assets.core.powerstate import on_ac
         self._stop_timers()
         self._last_ac = on_ac()
         self._watch = self.set_interval(2.0, self._check_power)
         self._timer = self.set_interval(1.0, self.refresh_status)
 
     def _check_power(self) -> None:
-        from Assets.tui.helpers import on_ac
+        from Assets.core.powerstate import on_ac
         ac = on_ac()
         if ac != self._last_ac:
             self._last_ac = ac
@@ -100,10 +100,10 @@ class StatusTab(VerticalScroll):
             row("Daemon", "[green]Running[/]"),
             row("Power", "AC" if on_ac else "Battery"),
             row("Backend", backend),
-            "",
-            "[b]Preset[/b]",
-            row("Active", mode or "[dim]—[/]"),
         ]
+        lines.append("")
+        lines.append("[b]Preset[/b]")
+        lines.append(row("Active", mode or "[dim]—[/]"))
         if profile:
             lines.append(row("Profile", profile))
         if loop:

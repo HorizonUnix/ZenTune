@@ -11,13 +11,13 @@ from Assets.tuning import automations as au
 class AutomationsTab(VerticalScroll):
     _SLOTS = (
         ("ac", "Preset on Battery Charge",
-         "Applied automatically when you plug in the charger.",
+         "Apply a preset whenever the battery begins charging.",
          au.get_ac_preset, au.set_ac_preset),
         ("battery", "Preset on Battery Discharge",
-         "Applied automatically when you unplug and run on battery.",
+         "Apply a preset whenever the system begins running from battery power.",
          au.get_battery_preset, au.set_battery_preset),
         ("resume", "Preset on System Resume",
-         "Applied automatically when the system wakes from sleep/hibernation.",
+         "Apply a preset after the system resumes from sleep or hibernation.",
          au.get_resume_preset, au.set_resume_preset),
     )
 
@@ -34,6 +34,7 @@ class AutomationsTab(VerticalScroll):
         valid = {v for _, v in options}
         with Vertical(classes="settings_card"):
             yield Static("Automations", classes="card_title")
+            yield Static("Apply presets automatically when power or system state changes.", classes="field_hint")
             for slot_id, label, desc, getter, _ in self._SLOTS:
                 cur = getter() or ""
                 with Vertical(classes="auto_slot"):
@@ -70,3 +71,4 @@ class AutomationsTab(VerticalScroll):
         client = get_client()
         if client.ping():
             client.reload_config()
+
