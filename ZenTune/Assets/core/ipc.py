@@ -37,16 +37,19 @@ class DaemonClient:
 
     def _send(self, cmd: dict) -> dict | None:
         with self._lock:
-            if not os.path.exists(cfg.ZMQ_SOCKET_PATH):
-                self._reset_sock()
-                return None
-            try:
-                sock = self._get_sock()
-                sock.send_string(json.dumps(cmd))
-                return json.loads(sock.recv_string())
-            except (zmq.ZMQError, json.JSONDecodeError):
-                self._reset_sock()
-                return None
+            for attempt in range(2):
+                if not os.path.exists(cfg.ZMQ_SOCKET_PATH):
+                    self._reset_sock()
+                    return None
+                try:
+                    sock = self._get_sock()
+                    sock.send_string(json.dumps(cmd))
+                    return json.loads(sock.recv_string())
+                except (zmq.ZMQError, json.JSONDecodeError):
+                    self._reset_sock()
+                    if attempt == 0:
+                        continue
+            return None
 
     def close(self) -> None:
         with self._lock:
