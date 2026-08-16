@@ -44,6 +44,16 @@ else
     command -v systemctl &>/dev/null && HAS_SERVICE_MANAGER=true
 fi
 
+if $IS_MACOS; then
+    SUDO="sudo"
+elif command -v sudo &>/dev/null; then
+    SUDO="sudo"
+elif command -v run0 &>/dev/null; then
+    SUDO="run0"
+else
+    die "Neither sudo nor run0 found. Install one and re-run."
+fi
+
 resolve_release_tag() {
     local tag=""
     if command -v curl &>/dev/null; then
@@ -144,36 +154,30 @@ install_deps() {
     case "$1" in
         apt)
             export DEBIAN_FRONTEND=noninteractive
-            $SUDO apt-get update -qq &>/dev/null \
-                || die "Failed to update apt package lists."
+            $SUDO apt-get update -qq &>/dev/null
             $SUDO apt-get install -y -qq --no-install-recommends \
                 python3 python3-venv python3-pip \
-                wget unzip curl &>/dev/null \
-                || die "Failed to install system dependencies via apt."
+                wget unzip curl &>/dev/null
             ;;
         dnf)
             $SUDO dnf install -y -q \
                 python3 python3-pip \
-                wget unzip curl &>/dev/null \
-                || die "Failed to install system dependencies via dnf."
+                wget unzip curl &>/dev/null
             ;;
         yum)
             $SUDO yum install -y -q \
                 python3 python3-pip \
-                wget unzip curl &>/dev/null \
-                || die "Failed to install system dependencies via yum."
+                wget unzip curl &>/dev/null
             ;;
         pacman)
             $SUDO pacman -Sy --noconfirm --quiet \
                 python python-pip \
-                wget unzip curl &>/dev/null \
-                || die "Failed to install system dependencies via pacman."
+                wget unzip curl &>/dev/null
             ;;
         zypper)
             $SUDO zypper install -y --quiet \
                 python3 python3-pip \
-                wget unzip curl &>/dev/null \
-                || die "Failed to install system dependencies via zypper."
+                wget unzip curl &>/dev/null
             ;;
         macos)
             local missing=()
@@ -453,23 +457,6 @@ run_setup() {
     fi
 }
 
-resolve_sudo() {
-    if [[ -n "${ZENTUNE_SUDO:-}" ]]; then
-        command -v "$ZENTUNE_SUDO" &>/dev/null || die "ZENTUNE_SUDO=$ZENTUNE_SUDO not found in PATH."
-        echo "$ZENTUNE_SUDO"
-        return
-    fi
-    if command -v sudo &>/dev/null; then
-        echo "sudo"
-    elif command -v run0 &>/dev/null; then
-        echo "run0"
-    elif command -v doas &>/dev/null; then
-        echo "doas"
-    else
-        die "No privilege escalation tool found (sudo, run0, or doas). Install one and re-run."
-    fi
-}
-
 main() {
     if [[ "${1:-}" == "--local" ]]; then
         LOCAL_MODE=true
@@ -478,7 +465,6 @@ main() {
 
     case "${1:-}" in
         --uninstall|-u)
-            SUDO="$(resolve_sudo)"
             uninstall
             return
             ;;
@@ -490,8 +476,6 @@ main() {
             return
             ;;
     esac
-
-    SUDO="$(resolve_sudo)"
 
     local tag
     if $LOCAL_MODE; then
