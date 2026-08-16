@@ -92,34 +92,34 @@ ensure_python310() {
             ;;
         apt)
             if grep -qi "ubuntu" /etc/os-release 2>/dev/null; then
-                sudo apt-get install -y -qq software-properties-common &>/dev/null
-                sudo add-apt-repository -y ppa:deadsnakes/ppa &>/dev/null
-                sudo apt-get update -qq &>/dev/null
+                $SUDO apt-get install -y -qq software-properties-common &>/dev/null
+                $SUDO add-apt-repository -y ppa:deadsnakes/ppa &>/dev/null
+                $SUDO apt-get update -qq &>/dev/null
             fi
             local best=""
             for v in 3.14 3.13 3.12 3.11 3.10; do
-                if sudo apt-get install -y -qq --dry-run "python${v}" "python${v}-venv" &>/dev/null; then
+                if $SUDO apt-get install -y -qq --dry-run "python${v}" "python${v}-venv" &>/dev/null; then
                     best="$v"; break
                 fi
             done
             [[ -n "$best" ]] || die "No Python 3.10+ package found in apt repos."
-            sudo apt-get install -y -qq "python${best}" "python${best}-venv" &>/dev/null \
+            $SUDO apt-get install -y -qq "python${best}" "python${best}-venv" &>/dev/null \
                 || die "Failed to install python${best}."
             ;;
         dnf)
-            sudo dnf install -y -q python3 python3-pip &>/dev/null \
+            $SUDO dnf install -y -q python3 python3-pip &>/dev/null \
                 || die "Failed to install Python via dnf."
             ;;
         yum)
-            sudo yum install -y -q python3 python3-pip &>/dev/null \
+            $SUDO yum install -y -q python3 python3-pip &>/dev/null \
                 || die "Failed to install Python via yum."
             ;;
         pacman)
-            sudo pacman -Sy --noconfirm --quiet python &>/dev/null \
+            $SUDO pacman -Sy --noconfirm --quiet python &>/dev/null \
                 || die "Failed to install Python via pacman."
             ;;
         zypper)
-            sudo zypper install -y --quiet python3 python3-pip &>/dev/null \
+            $SUDO zypper install -y --quiet python3 python3-pip &>/dev/null \
                 || die "Failed to install Python via zypper."
             ;;
         unknown)
@@ -144,30 +144,36 @@ install_deps() {
     case "$1" in
         apt)
             export DEBIAN_FRONTEND=noninteractive
-            sudo apt-get update -qq &>/dev/null
-            sudo apt-get install -y -qq --no-install-recommends \
+            $SUDO apt-get update -qq &>/dev/null \
+                || die "Failed to update apt package lists."
+            $SUDO apt-get install -y -qq --no-install-recommends \
                 python3 python3-venv python3-pip \
-                wget unzip curl &>/dev/null
+                wget unzip curl &>/dev/null \
+                || die "Failed to install system dependencies via apt."
             ;;
         dnf)
-            sudo dnf install -y -q \
+            $SUDO dnf install -y -q \
                 python3 python3-pip \
-                wget unzip curl &>/dev/null
+                wget unzip curl &>/dev/null \
+                || die "Failed to install system dependencies via dnf."
             ;;
         yum)
-            sudo yum install -y -q \
+            $SUDO yum install -y -q \
                 python3 python3-pip \
-                wget unzip curl &>/dev/null
+                wget unzip curl &>/dev/null \
+                || die "Failed to install system dependencies via yum."
             ;;
         pacman)
-            sudo pacman -Sy --noconfirm --quiet \
+            $SUDO pacman -Sy --noconfirm --quiet \
                 python python-pip \
-                wget unzip curl &>/dev/null
+                wget unzip curl &>/dev/null \
+                || die "Failed to install system dependencies via pacman."
             ;;
         zypper)
-            sudo zypper install -y --quiet \
+            $SUDO zypper install -y --quiet \
                 python3 python3-pip \
-                wget unzip curl &>/dev/null
+                wget unzip curl &>/dev/null \
+                || die "Failed to install system dependencies via zypper."
             ;;
         macos)
             local missing=()
@@ -233,8 +239,8 @@ install_files() {
         [[ -d "$src" ]] || die "Could not find source directory in archive."
     fi
 
-    sudo mkdir -p "$INSTALL_DIR"
-    sudo chown "$CURRENT_USER:$CURRENT_GROUP" "$INSTALL_DIR"
+    $SUDO mkdir -p "$INSTALL_DIR"
+    $SUDO chown "$CURRENT_USER:$CURRENT_GROUP" "$INSTALL_DIR"
 
     local bak="$TMP_DIR/preserve"
     mkdir -p "$bak"
@@ -247,7 +253,7 @@ install_files() {
         info "Preserving custom presets."
     fi
 
-    sudo rm -rf "$SRC_DIR"
+    $SUDO rm -rf "$SRC_DIR"
     cp -r "$src" "$SRC_DIR"
 
     if [[ -f "$bak/config.ini" ]]; then
@@ -298,11 +304,11 @@ set_permissions() {
 
 install_wrapper() {
     info "Installing launcher..."
-    sudo tee "$BIN_WRAPPER" > /dev/null <<EOF
+    $SUDO tee "$BIN_WRAPPER" > /dev/null <<EOF
 #!/usr/bin/env bash
 exec "$VENV_PYTHON" "$SRC_DIR/zentune.py" "\$@"
 EOF
-    sudo chmod +x "$BIN_WRAPPER"
+    $SUDO chmod +x "$BIN_WRAPPER"
     [[ -x "$BIN_WRAPPER" ]] || die "Failed to install launcher at $BIN_WRAPPER"
     ok "Launcher installed: $BIN_WRAPPER"
 }
@@ -315,14 +321,14 @@ restart_daemon() {
     $HAS_SERVICE_MANAGER || return 0
     info "Restarting daemon..."
     if $IS_MACOS; then
-        sudo launchctl kickstart -k "system/${SERVICE_LABEL}" \
+        $SUDO launchctl kickstart -k "system/${SERVICE_LABEL}" \
             && ok "Daemon restarted." \
-            || warn "Could not restart daemon, run: sudo launchctl kickstart -k system/${SERVICE_LABEL}"
+            || warn "Could not restart daemon, run: $SUDO launchctl kickstart -k system/${SERVICE_LABEL}"
     else
-        sudo systemctl daemon-reload
-        sudo systemctl restart "$SERVICE_NAME" \
+        $SUDO systemctl daemon-reload
+        $SUDO systemctl restart "$SERVICE_NAME" \
             && ok "Daemon restarted." \
-            || warn "Could not restart daemon, run: sudo systemctl status $SERVICE_NAME"
+            || warn "Could not restart daemon, run: $SUDO systemctl status $SERVICE_NAME"
     fi
 }
 
@@ -375,13 +381,13 @@ uninstall() {
     if $HAS_SERVICE_MANAGER && [[ -f "$SERVICE_FILE" ]]; then
         info "Removing daemon service..."
         if $IS_MACOS; then
-            sudo launchctl bootout "system/${SERVICE_LABEL}" 2>/dev/null || true
-            sudo rm -f "$SERVICE_FILE"
+            $SUDO launchctl bootout "system/${SERVICE_LABEL}" 2>/dev/null || true
+            $SUDO rm -f "$SERVICE_FILE"
         else
-            sudo systemctl stop "$SERVICE_NAME" 2>/dev/null || true
-            sudo systemctl disable "$SERVICE_NAME" 2>/dev/null || true
-            sudo rm -f "$SERVICE_FILE"
-            sudo systemctl daemon-reload 2>/dev/null || true
+            $SUDO systemctl stop "$SERVICE_NAME" 2>/dev/null || true
+            $SUDO systemctl disable "$SERVICE_NAME" 2>/dev/null || true
+            $SUDO rm -f "$SERVICE_FILE"
+            $SUDO systemctl daemon-reload 2>/dev/null || true
         fi
         ok "Daemon service removed."
     else
@@ -389,20 +395,20 @@ uninstall() {
     fi
 
     if [[ -e "$BIN_WRAPPER" ]]; then
-        sudo rm -f "$BIN_WRAPPER"
+        $SUDO rm -f "$BIN_WRAPPER"
         ok "Launcher removed: $BIN_WRAPPER"
     else
         info "No launcher to remove."
     fi
 
     if [[ -d "$INSTALL_DIR" ]]; then
-        sudo rm -rf "$INSTALL_DIR"
+        $SUDO rm -rf "$INSTALL_DIR"
         ok "Files removed: $INSTALL_DIR"
     else
         info "No installation files to remove."
     fi
 
-    sudo rm -f /run/zentune.sock /run/zentune_daemon.lock 2>/dev/null || true
+    $SUDO rm -f /run/zentune.sock /run/zentune_daemon.lock 2>/dev/null || true
     rm -f /tmp/zentune_tui.lock 2>/dev/null || true
 
     echo ""
@@ -437,13 +443,30 @@ run_setup() {
         fi
         info "Start the daemon (needs root) before running the app:"
         echo ""
-        echo -e "    ${_B}sudo $VENV_PYTHON $SRC_DIR/Assets/daemon/daemon.py${_R}"
+        echo -e "    ${_B}$SUDO $VENV_PYTHON $SRC_DIR/Assets/daemon/daemon.py${_R}"
         echo ""
         if ! $IS_MACOS; then
             info "For OpenRC / runit / s6 service examples, see the wiki:"
             info "https://github.com/HorizonUnix/ZenTune/wiki/Linux-Installation"
             echo ""
         fi
+    fi
+}
+
+resolve_sudo() {
+    if [[ -n "${ZENTUNE_SUDO:-}" ]]; then
+        command -v "$ZENTUNE_SUDO" &>/dev/null || die "ZENTUNE_SUDO=$ZENTUNE_SUDO not found in PATH."
+        echo "$ZENTUNE_SUDO"
+        return
+    fi
+    if command -v sudo &>/dev/null; then
+        echo "sudo"
+    elif command -v run0 &>/dev/null; then
+        echo "run0"
+    elif command -v doas &>/dev/null; then
+        echo "doas"
+    else
+        die "No privilege escalation tool found (sudo, run0, or doas). Install one and re-run."
     fi
 }
 
@@ -455,6 +478,7 @@ main() {
 
     case "${1:-}" in
         --uninstall|-u)
+            SUDO="$(resolve_sudo)"
             uninstall
             return
             ;;
@@ -466,6 +490,8 @@ main() {
             return
             ;;
     esac
+
+    SUDO="$(resolve_sudo)"
 
     local tag
     if $LOCAL_MODE; then
