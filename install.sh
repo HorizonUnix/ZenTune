@@ -44,15 +44,39 @@ else
     command -v systemctl &>/dev/null && HAS_SERVICE_MANAGER=true
 fi
 
-if $IS_MACOS; then
-    SUDO="sudo"
-elif command -v sudo &>/dev/null; then
-    SUDO="sudo"
-elif command -v run0 &>/dev/null; then
-    SUDO="run0"
-else
-    die "Neither sudo nor run0 found. Install one and re-run."
-fi
+PRIV_TOOL=""
+for arg in "$@"; do
+    case "$arg" in
+        --sudo) PRIV_TOOL="sudo" ;;
+        --run0) PRIV_TOOL="run0" ;;
+    esac
+done
+
+case "$PRIV_TOOL" in
+    sudo)
+        command -v sudo &>/dev/null || die "sudo not found (requested via --sudo)."
+        SUDO="sudo"
+        ;;
+    run0)
+        if $IS_MACOS; then
+            SUDO="sudo"
+        else
+            command -v run0 &>/dev/null || die "run0 not found (requested via --run0)."
+            SUDO="run0"
+        fi
+        ;;
+    *)
+        if $IS_MACOS; then
+            SUDO="sudo"
+        elif command -v sudo &>/dev/null; then
+            SUDO="sudo"
+        elif command -v run0 &>/dev/null; then
+            SUDO="run0"
+        else
+            die "Neither sudo nor run0 found. Install one and re-run."
+        fi
+        ;;
+esac
 
 resolve_release_tag() {
     local tag=""
@@ -469,10 +493,12 @@ main() {
             return
             ;;
         --help|-h)
-            echo "Usage: bash install.sh [--local] [--uninstall]"
+            echo "Usage: bash install.sh [--local] [--uninstall] [--sudo|--run0]"
             echo "  (no args)      Install or update ZenTune from the latest GitHub release."
             echo "  --local        Install from this local checkout instead of downloading a release (for testing)."
             echo "  --uninstall    Remove ZenTune (service, launcher, and files)."
+            echo "  --sudo         Force sudo for privileged commands, even if run0 is also present."
+            echo "  --run0         Force run0 for privileged commands, even if sudo is also present."
             return
             ;;
     esac
