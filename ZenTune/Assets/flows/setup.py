@@ -50,6 +50,7 @@ def _apply_defaults() -> None:
         ("Settings", "ApplyOnStart"): "0",
         ("Settings", "Debug"): "0",
         ("Settings", "DefaultTab"): "home",
+        ("Settings", "PrivilegeTool"): "auto",
         ("Automations", "OnAC"): "",
         ("Automations", "OnBattery"): "",
         ("Automations", "OnResume"): "",
@@ -85,7 +86,7 @@ _CFG_DEFAULTS: dict[str, dict[str, str]] = {
     "User": {"mode": ""},
     "Settings": {"time": "3", "reapply": "0", "applyonstart": "0",
                  "autostartadaptive": "0", "softwareupdate": "1", "debug": "0",
-                 "defaulttab": "home"},
+                 "defaulttab": "home", "privilegetool": "auto"},
     "Automations": {"onac": "", "onbattery": "", "onresume": ""},
     "Adaptive": {"preset": "", "interval": "2"},
 }

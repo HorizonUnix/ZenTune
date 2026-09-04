@@ -426,7 +426,7 @@ ConfirmModal, DaemonLogModal, HardwareInfoModal, FatalErrorModal, StalePathModal
     padding: 0 1;
 }
 
-AboutModal, UpdaterModal, UpdateProgressModal, SudoModal {
+AboutModal, UpdaterModal, UpdateProgressModal, SudoModal, Run0Modal {
     align: center middle;
 }
 

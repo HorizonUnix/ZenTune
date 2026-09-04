@@ -29,11 +29,18 @@ ADAPTIVE_ON_MSG = (
 
 
 async def ensure_sudo(app) -> bool:
-    from Assets.daemon.service import sudo_available
-    if sudo_available():
+    from Assets.daemon.service import privilege_available, get_privilege_tool
+    if privilege_available():
         return True
+    tool = get_privilege_tool()
+    if tool == "run0":
+        from Assets.tui.modals import Run0Modal
+        return bool(await app.push_screen_wait(Run0Modal()))
     from Assets.tui.modals import SudoModal
     return bool(await app.push_screen_wait(SudoModal()))
+
+
+ensure_privilege = ensure_sudo
 
 
 def exclude_adaptive_when_macos(items, key=lambda x: x, excluded="adaptive"):

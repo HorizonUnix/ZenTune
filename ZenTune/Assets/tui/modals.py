@@ -439,3 +439,50 @@ class SudoModal(ModalScreen[bool]):
         pw.value = ""
         pw.focus()
         self.query_one("#sudo_ok", Button).disabled = False
+
+
+class Run0Modal(ModalScreen[bool]):
+    def compose(self) -> ComposeResult:
+        with Vertical(id="sudo_dialog"):
+            yield Static("Administrator access required", classes="dialog_title")
+            yield Static(
+                "ZenTune uses systemd run0 for elevated privileges.\n\n"
+                "Select Authenticate to confirm with system authorization (Polkit).",
+                id="sudo_desc")
+            yield Static("", id="sudo_error")
+            with Horizontal(id="sudo_buttons"):
+                yield Button("Authenticate", id="sudo_ok", variant="primary")
+                yield Button("Cancel", id="sudo_cancel")
+
+    def on_mount(self) -> None:
+        self.query_one("#sudo_ok", Button).focus()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "sudo_cancel":
+            self.dismiss(False)
+        elif event.button.id == "sudo_ok":
+            self._submit()
+
+    def _submit(self) -> None:
+        self.query_one("#sudo_error", Static).update("Authenticating…")
+        self.query_one("#sudo_ok", Button).disabled = True
+        self._authenticate()
+
+    @work(exclusive=True, group="sudo")
+    async def _authenticate(self) -> None:
+        from Assets.daemon.service import prime_privilege
+        import asyncio
+        try:
+            with self.app.suspend():
+                ok = await asyncio.to_thread(prime_privilege)
+        except Exception:
+            ok = await asyncio.to_thread(prime_privilege)
+        self._result(ok)
+
+    def _result(self, ok: bool) -> None:
+        if ok:
+            self.dismiss(True)
+            return
+        self.query_one("#sudo_error", Static).update("[red]Authentication failed or cancelled.[/]")
+        self.query_one("#sudo_ok", Button).disabled = False
+        self.query_one("#sudo_ok", Button).focus()

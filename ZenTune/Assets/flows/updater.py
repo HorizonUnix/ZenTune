@@ -74,8 +74,7 @@ def perform_update(url: str = _STABLE_URL, status=None) -> dict:
     config_src = os.path.join(assets_dir, "config.ini")
     presets_src = os.path.join(assets_dir, "custom.json")
 
-    def _sudo(*args: str) -> int:
-        return subprocess.run(["sudo", "-n", *args]).returncode
+    from Assets.daemon.service import privilege_run
 
     try:
         if os.path.exists(config_src):
@@ -92,20 +91,21 @@ def perform_update(url: str = _STABLE_URL, status=None) -> dict:
 
         notify("Installing…")
         src_bak = src_dir + ".bak"
-        if _sudo("mv", src_dir, src_bak) != 0:
-            raise PermissionError(f"Could not back up {src_dir}.")
-
-        inner = os.path.join(new_folder, cfg.DIST_NAME)
-        if _sudo("mv", inner, src_dir) != 0:
-            _sudo("mv", src_bak, src_dir)
+        swap_script = (
+            'chmod +x "$3/zentune.py" 2>/dev/null || true; '
+            'mv "$1" "$2" && '
+            '(mv "$3" "$1" || (mv "$2" "$1" && exit 1)) && '
+            'rm -rf "$2" "$4"'
+        )
+        if privilege_run("sh", "-c", swap_script, "--", src_dir, src_bak, inner, new_folder) != 0:
             raise PermissionError(f"Could not install the new release into {src_dir}.")
-
-        _sudo("rm", "-rf", src_bak)
-        _sudo("rm", "-rf", new_folder)
 
         launch = os.path.join(src_dir, "zentune.py")
         if os.path.exists(launch):
-            subprocess.run(["chmod", "+x", launch], check=True)
+            try:
+                os.chmod(launch, 0o755)
+            except OSError:
+                privilege_run("chmod", "+x", launch)
 
         new_assets = os.path.join(src_dir, "Assets")
         if os.path.exists(config_bak):

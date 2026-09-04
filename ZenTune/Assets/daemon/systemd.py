@@ -45,7 +45,7 @@ def _render_unit() -> str:
 def _systemctl(*args: str) -> int:
     if not is_available():
         return 1
-    return common.sudo_run("systemctl", *args)
+    return common.privilege_run("systemctl", *args)
 
 
 def install_service() -> dict:
@@ -53,31 +53,34 @@ def install_service() -> dict:
         return {"ok": False, "manual": True,
                 "error": f"systemctl is not available. Start the daemon manually:\n"
                          f"{common.manual_start_command()}"}
-    if not common.sudo_available():
+    if not common.privilege_available():
         return {"ok": False, "error": "Administrator access is required."}
     if not common.ensure_venv():
         return {"ok": False, "error": "Could not prepare the daemon environment."}
-    if not common.sudo_write_file(SERVICE_FILE, _render_unit(), ".service"):
+    if not common.privilege_write_file(SERVICE_FILE, _render_unit(), ".service", owner="root:root", mode="644"):
         return {"ok": False, "error": "Failed to write the service file."}
-    _systemctl("daemon-reload")
-    warning = ""
-    if _systemctl("enable", SERVICE_NAME) != 0:
-        warning = "Daemon installed, but it could not be enabled to start on boot."
-    if _systemctl("start", SERVICE_NAME) != 0:
+    ret = common.privilege_run(
+        "sh", "-c",
+        f"systemctl daemon-reload; systemctl enable {SERVICE_NAME} 2>/dev/null || true; systemctl restart {SERVICE_NAME}"
+    )
+    if ret != 0 and not service_running():
         return {"ok": False, "error": "Daemon installed, but the service failed to start."}
-    return {"ok": True, "warning": warning}
+    return {"ok": True}
 
 
 def uninstall_service() -> dict:
     if not is_available():
         return {"ok": False, "manual": True,
                 "error": "systemctl is not available. No service to uninstall."}
-    if not common.sudo_available():
+    if not common.privilege_available():
         return {"ok": False, "error": "Administrator access is required."}
-    _systemctl("stop", SERVICE_NAME)
-    _systemctl("disable", SERVICE_NAME)
-    common.sudo_run("rm", "-f", SERVICE_FILE)
-    _systemctl("daemon-reload")
+    common.privilege_run(
+        "sh", "-c",
+        f"systemctl stop {SERVICE_NAME} 2>/dev/null; "
+        f"systemctl disable {SERVICE_NAME} 2>/dev/null; "
+        f"rm -f {SERVICE_FILE}; "
+        f"systemctl daemon-reload 2>/dev/null || true"
+    )
     return {"ok": True}
 
 
@@ -103,9 +106,9 @@ def restart_service() -> dict:
     if not is_available():
         return {"ok": False, "manual": True,
                 "error": f"systemctl is not available. Restart the daemon manually:\n{common.manual_start_command()}"}
-    if not common.sudo_available():
+    if not common.privilege_available():
         return {"ok": False, "error": "Administrator access is required."}
-    if _systemctl("restart", SERVICE_NAME) != 0:
+    if _systemctl("restart", SERVICE_NAME) != 0 and not service_running():
         return {"ok": False, "error": "Failed to restart the service."}
     return {"ok": True}
 
@@ -147,11 +150,14 @@ def service_path_stale() -> bool:
 
 
 def regenerate_service() -> dict:
-    if not common.sudo_available():
+    if not common.privilege_available():
         return {"ok": False, "error": "Administrator access is required."}
-    if not common.sudo_write_file(SERVICE_FILE, _render_unit(), ".service"):
+    if not common.privilege_write_file(SERVICE_FILE, _render_unit(), ".service", owner="root:root", mode="644"):
         return {"ok": False, "error": "Failed to write the service file."}
-    _systemctl("daemon-reload")
-    if _systemctl("restart", SERVICE_NAME) != 0:
+    ret = common.privilege_run(
+        "sh", "-c",
+        f"systemctl daemon-reload && systemctl restart {SERVICE_NAME}"
+    )
+    if ret != 0 and not service_running():
         return {"ok": False, "error": "Service file updated, but the daemon failed to restart."}
     return {"ok": True}

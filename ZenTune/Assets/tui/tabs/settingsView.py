@@ -6,8 +6,16 @@ from textual.containers import Grid, Horizontal, Vertical, VerticalScroll
 from textual.widgets import Button, Input, Label, Select, Static, Switch
 
 from Assets.core import config as cfg
+from Assets.core import platform as plat
 from Assets.tui.helpers import exclude_adaptive_when_macos
 from Assets.tuning import power
+
+
+_PRIVILEGE_CHOICES = (
+    ("Auto-detect", "auto"),
+    ("sudo", "sudo"),
+    ("run0", "run0"),
+)
 
 
 _TOGGLES = (
@@ -53,6 +61,14 @@ class SettingsTab(VerticalScroll):
                              value=current if current in valid else "home",
                              allow_blank=False, id="set-default-tab")
                 yield Label("Default tab on startup", classes="set_label")
+            if not plat.IS_MACOS:
+                current_priv = cfg.get("Settings", "PrivilegeTool", "auto").lower()
+                valid_priv = {pid for _, pid in _PRIVILEGE_CHOICES}
+                with Horizontal(classes="setrow"):
+                    yield Select([(label, pid) for label, pid in _PRIVILEGE_CHOICES],
+                                 value=current_priv if current_priv in valid_priv else "auto",
+                                 allow_blank=False, id="set-privilege-tool")
+                    yield Label("Privilege escalation tool", classes="set_label")
 
         with Vertical(classes="settings_card"):
             yield Static("Daemon service", classes="card_title")
@@ -101,6 +117,10 @@ class SettingsTab(VerticalScroll):
         if event.control.id == "set-default-tab" and isinstance(event.value, str):
             cfg.set_config("Settings", "DefaultTab", event.value)
             cfg.save()
+        elif event.control.id == "set-privilege-tool" and isinstance(event.value, str):
+            cfg.set_config("Settings", "PrivilegeTool", event.value)
+            cfg.save()
+            self.app.notify(f"Privilege tool set to {event.value}.", title="Privileges")
 
     def on_button_pressed(self, event: Button.Pressed) -> None:
         bid = event.button.id

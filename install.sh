@@ -267,8 +267,7 @@ install_files() {
         [[ -d "$src" ]] || die "Could not find source directory in archive."
     fi
 
-    $SUDO mkdir -p "$INSTALL_DIR"
-    $SUDO chown "$CURRENT_USER:$CURRENT_GROUP" "$INSTALL_DIR"
+    $SUDO sh -c "mkdir -p '$INSTALL_DIR' && chown '$CURRENT_USER:$CURRENT_GROUP' '$INSTALL_DIR'"
 
     local bak="$TMP_DIR/preserve"
     mkdir -p "$bak"
@@ -332,11 +331,14 @@ set_permissions() {
 
 install_wrapper() {
     info "Installing launcher..."
-    $SUDO tee "$BIN_WRAPPER" > /dev/null <<EOF
+    local tmp
+    tmp="$(mktemp)"
+    cat > "$tmp" <<EOF
 #!/usr/bin/env bash
 exec "$VENV_PYTHON" "$SRC_DIR/zentune.py" "\$@"
 EOF
-    $SUDO chmod +x "$BIN_WRAPPER"
+    $SUDO sh -c "cp '$tmp' '$BIN_WRAPPER' && chmod +x '$BIN_WRAPPER'"
+    rm -f "$tmp"
     [[ -x "$BIN_WRAPPER" ]] || die "Failed to install launcher at $BIN_WRAPPER"
     ok "Launcher installed: $BIN_WRAPPER"
 }
@@ -353,8 +355,7 @@ restart_daemon() {
             && ok "Daemon restarted." \
             || warn "Could not restart daemon, run: $SUDO launchctl kickstart -k system/${SERVICE_LABEL}"
     else
-        $SUDO systemctl daemon-reload
-        $SUDO systemctl restart "$SERVICE_NAME" \
+        $SUDO sh -c "systemctl daemon-reload && systemctl restart '$SERVICE_NAME'" \
             && ok "Daemon restarted." \
             || warn "Could not restart daemon, run: $SUDO systemctl status $SERVICE_NAME"
     fi
@@ -412,31 +413,19 @@ uninstall() {
             $SUDO launchctl bootout "system/${SERVICE_LABEL}" 2>/dev/null || true
             $SUDO rm -f "$SERVICE_FILE"
         else
-            $SUDO systemctl stop "$SERVICE_NAME" 2>/dev/null || true
-            $SUDO systemctl disable "$SERVICE_NAME" 2>/dev/null || true
-            $SUDO rm -f "$SERVICE_FILE"
-            $SUDO systemctl daemon-reload 2>/dev/null || true
+            $SUDO sh -c "systemctl stop '$SERVICE_NAME' 2>/dev/null || true; systemctl disable '$SERVICE_NAME' 2>/dev/null || true; rm -f '$SERVICE_FILE'; systemctl daemon-reload 2>/dev/null || true"
         fi
         ok "Daemon service removed."
     else
         info "No daemon service to remove."
     fi
 
-    if [[ -e "$BIN_WRAPPER" ]]; then
-        $SUDO rm -f "$BIN_WRAPPER"
-        ok "Launcher removed: $BIN_WRAPPER"
-    else
-        info "No launcher to remove."
-    fi
+    local to_remove=()
+    [[ -e "$BIN_WRAPPER" ]] && to_remove+=("$BIN_WRAPPER")
+    [[ -d "$INSTALL_DIR" ]] && to_remove+=("$INSTALL_DIR")
+    to_remove+=("/run/zentune.sock" "/run/zentune_daemon.lock")
 
-    if [[ -d "$INSTALL_DIR" ]]; then
-        $SUDO rm -rf "$INSTALL_DIR"
-        ok "Files removed: $INSTALL_DIR"
-    else
-        info "No installation files to remove."
-    fi
-
-    $SUDO rm -f /run/zentune.sock /run/zentune_daemon.lock 2>/dev/null || true
+    $SUDO rm -rf "${to_remove[@]}" 2>/dev/null || true
     rm -f /tmp/zentune_tui.lock 2>/dev/null || true
 
     echo ""

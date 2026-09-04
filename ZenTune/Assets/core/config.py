@@ -26,7 +26,7 @@ CONFIG_PATH = os.path.join(ASSETS_DIR, "config.ini")
 CUSTOM_PRESETS_PATH = Path(ASSETS_DIR) / "custom.json"
 ADAPTIVE_PRESETS_PATH = os.path.join(ASSETS_DIR, "adaptive.json")
 
-KERNEL = os.uname().sysname
+KERNEL = os.uname().sysname if hasattr(os, "uname") else "Linux"
 
 VENV_DIR = "/opt/zentune/venv"
 VENV_PYTHON = os.path.join(VENV_DIR, "bin", "python3")
@@ -134,7 +134,7 @@ _SECTION_ORDER = ["User", "Settings", "Automations", "Adaptive", "Info"]
 
 REQUIRED: dict[str, list[str]] = {
     "User": ["mode"],
-    "Settings": ["time", "reapply", "applyonstart", "autostartadaptive", "softwareupdate", "debug", "defaulttab"],
+    "Settings": ["time", "reapply", "applyonstart", "autostartadaptive", "softwareupdate", "debug", "defaulttab", "privilegetool"],
     "Info": ["cpu", "signature", "architecture", "family", "type", "variant"],
     "Automations": ["onac", "onbattery", "onresume"],
     "Adaptive": ["preset", "interval"],
