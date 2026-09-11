@@ -91,6 +91,8 @@ def perform_update(url: str = _STABLE_URL, status=None) -> dict:
 
         notify("Installing…")
         src_bak = src_dir + ".bak"
+        subdirs = [os.path.join(new_folder, d) for d in os.listdir(new_folder) if os.path.isdir(os.path.join(new_folder, d))]
+        inner = subdirs[0] if len(subdirs) == 1 else new_folder
         swap_script = (
             'chmod +x "$3/zentune.py" 2>/dev/null || true; '
             'mv "$1" "$2" && '
