@@ -17,6 +17,8 @@ else
     SERVICE_FILE="/etc/systemd/system/$SERVICE_NAME"
 fi
 RELEASE_URL="https://github.com/HorizonUnix/ZenTune/releases/latest/download/ZenTune.zip"
+BETA_RELEASE_URL="https://github.com/HorizonUnix/ZenTune/releases/download/ZenTune-Beta/ZenTune.zip"
+BETA_MODE=false
 TMP_DIR="$(mktemp -d)"
 
 LOCAL_MODE=false
@@ -51,6 +53,7 @@ for arg in "$@"; do
         --sudo) PRIV_TOOL="sudo" ;;
         --run0) PRIV_TOOL="run0" ;;
         --skip-deps) SKIP_DEPS=true ;;
+        --beta) BETA_MODE=true ;;
     esac
 done
 
@@ -100,17 +103,31 @@ ensure_privilege() {
 }
 
 resolve_release_tag() {
+    local mode="${1:-stable}"
     local tag=""
-    if command -v curl &>/dev/null; then
-        tag="$(curl -fsSL -o /dev/null -w '%{url_effective}' \
-            "https://github.com/HorizonUnix/ZenTune/releases/latest" 2>/dev/null \
-            | sed 's|.*/tag/||')" || true
-    elif command -v wget &>/dev/null; then
-        tag="$(wget -q --server-response --spider \
-            "https://github.com/HorizonUnix/ZenTune/releases/latest" 2>&1 \
-            | awk '/Location:/{print $2}' | tail -1 | sed 's|.*/tag/||')" || true
+    if [[ "$mode" == "beta" ]]; then
+        if command -v curl &>/dev/null; then
+            tag="$(curl -fsSL \
+                "https://api.github.com/repos/HorizonUnix/ZenTune/releases/tags/ZenTune-Beta" 2>/dev/null \
+                | grep -m1 '"tag_name"' | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')" || true
+        elif command -v wget &>/dev/null; then
+            tag="$(wget -qO- \
+                "https://api.github.com/repos/HorizonUnix/ZenTune/releases/tags/ZenTune-Beta" 2>/dev/null \
+                | grep -m1 '"tag_name"' | sed 's/.*"tag_name": *"\([^"]*\)".*/\1/')" || true
+        fi
+        echo "${tag:-ZenTune-Beta}"
+    else
+        if command -v curl &>/dev/null; then
+            tag="$(curl -fsSL -o /dev/null -w '%{url_effective}' \
+                "https://github.com/HorizonUnix/ZenTune/releases/latest" 2>/dev/null \
+                | sed 's|.*/tag/||')" || true
+        elif command -v wget &>/dev/null; then
+            tag="$(wget -q --server-response --spider \
+                "https://github.com/HorizonUnix/ZenTune/releases/latest" 2>&1 \
+                | awk '/Location:/{print $2}' | tail -1 | sed 's|.*/tag/||')" || true
+        fi
+        echo "${tag:-latest}"
     fi
-    echo "${tag:-latest}"
 }
 
 detect_pm() {
@@ -598,8 +615,9 @@ main() {
                 return
                 ;;
             --help|-h)
-                echo "Usage: bash install.sh [--local] [--skip-deps] [--uninstall] [--sudo|--run0]"
-                echo "  (no args)      Install or update ZenTune from the latest GitHub release."
+                echo "Usage: bash install.sh [--local] [--beta] [--skip-deps] [--uninstall] [--sudo|--run0]"
+                echo "  (no args)      Install or update ZenTune from the latest stable GitHub release."
+                echo "  --beta         Install the latest pre-release (beta) build instead of stable."
                 echo "  --local        Install from this local checkout instead of downloading a release (for testing)."
                 echo "  --skip-deps    Skip package manager dependency installation if already present."
                 echo "  --uninstall    Remove ZenTune (service, launcher, and files)."
@@ -610,6 +628,10 @@ main() {
             --local)
                 LOCAL_MODE=true
                 ;;
+            --beta)
+                BETA_MODE=true
+                RELEASE_URL="$BETA_RELEASE_URL"
+                ;;
             --skip-deps)
                 SKIP_DEPS=true
                 ;;
@@ -619,6 +641,8 @@ main() {
     local tag
     if $LOCAL_MODE; then
         tag="local checkout"
+    elif $BETA_MODE; then
+        tag="$(resolve_release_tag beta) (beta)"
     else
         tag="$(resolve_release_tag)"
     fi
