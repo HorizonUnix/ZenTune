@@ -121,6 +121,18 @@ PowerTab {
     padding-left: 1;
 }
 
+.setcol {
+    height: auto;
+    margin-top: 1;
+    padding: 0 1;
+}
+
+.set_top_label {
+    height: auto;
+    text-style: bold;
+    margin-bottom: 1;
+}
+
 .auto_slot {
     height: auto;
     margin-top: 1;
@@ -294,10 +306,43 @@ SetupWizard {
 }
 
 #set-default-tab {
-    width: 25;
+    width: 1fr;
+    max-width: 40;
 }
 
-ConfirmModal, DaemonLogModal, HardwareInfoModal, FatalErrorModal, StalePathModal, ManualDaemonModal, CpuInfoModal {
+#set-privilege-tool {
+    width: 1fr;
+    max-width: 40;
+}
+
+#backup_filepath {
+    width: 1fr;
+}
+
+#backup_buttons {
+    margin-top: 1;
+}
+
+#backup_buttons Button {
+    width: 1fr;
+    min-width: 0;
+    margin: 0 1;
+}
+
+#import_help {
+    margin-bottom: 1;
+}
+
+#import_path {
+    width: 1fr;
+    margin-bottom: 1;
+}
+
+#import_error {
+    margin-bottom: 1;
+}
+
+ConfirmModal, DaemonLogModal, HardwareInfoModal, FatalErrorModal, StalePathModal, ManualDaemonModal, CpuInfoModal, ImportPresetsModal {
     align: center middle;
 }
 

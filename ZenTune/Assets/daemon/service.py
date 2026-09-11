@@ -11,21 +11,37 @@ from Assets.core import config as cfg
 from Assets.core import platform as plat
 
 
+def is_sudo_installed() -> bool:
+    return bool(shutil.which("sudo") or os.path.isfile("/usr/bin/sudo"))
+
+
+def is_run0_installed() -> bool:
+    return bool(shutil.which("run0") or os.path.isfile("/usr/bin/run0"))
+
+
 def get_privilege_tool() -> str:
     if plat.IS_MACOS:
         return "sudo"
     configured = cfg.get("Settings", "PrivilegeTool", "auto").strip().lower()
+    has_sudo = is_sudo_installed()
+    has_run0 = is_run0_installed()
     if configured == "run0":
-        if shutil.which("run0") or os.path.isfile("/usr/bin/run0"):
+        if has_run0:
             return "run0"
-    elif configured == "sudo":
-        if shutil.which("sudo") or os.path.isfile("/usr/bin/sudo"):
+        if has_sudo:
             return "sudo"
-    if shutil.which("sudo") or os.path.isfile("/usr/bin/sudo"):
+        return "none"
+    elif configured == "sudo":
+        if has_sudo:
+            return "sudo"
+        if has_run0:
+            return "run0"
+        return "none"
+    if has_sudo:
         return "sudo"
-    if shutil.which("run0") or os.path.isfile("/usr/bin/run0"):
+    if has_run0:
         return "run0"
-    return "sudo"
+    return "none"
 
 
 def privilege_available() -> bool:
@@ -38,25 +54,37 @@ def privilege_available() -> bool:
     if tool == "run0":
         try:
             return subprocess.run(
-                ["run0", "--no-ask-password", "true"],
+                ["run0", "--background=", "--pipe", "--no-ask-password", "true"],
                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
             ).returncode == 0
         except (OSError, subprocess.SubprocessError):
             return False
-    try:
-        return subprocess.run(
-            ["sudo", "-n", "-v"],
-            stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-        ).returncode == 0
-    except (OSError, subprocess.SubprocessError):
-        return False
+    elif tool == "sudo":
+        try:
+            return subprocess.run(
+                ["sudo", "-n", "-v"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
+            ).returncode == 0
+        except (OSError, subprocess.SubprocessError):
+            return False
+    return False
 
 
 def sudo_available() -> bool:
     return privilege_available()
 
 
+_last_auth_cancelled = False
+
+
+def was_auth_cancelled() -> bool:
+    global _last_auth_cancelled
+    return _last_auth_cancelled
+
+
 def prime_privilege(password: str = "") -> bool:
+    global _last_auth_cancelled
+    _last_auth_cancelled = False
     try:
         if os.geteuid() == 0:
             return True
@@ -65,33 +93,48 @@ def prime_privilege(password: str = "") -> bool:
     tool = get_privilege_tool()
     if tool == "run0":
         try:
-            return subprocess.run(["run0", "true"]).returncode == 0
+            r = subprocess.run(["run0", "--background=", "--pipe", "true"], capture_output=True, text=True)
+            if r.returncode != 0:
+                err = f"{r.stderr or ''} {r.stdout or ''}".lower()
+                if any(k in err for k in ("cancel", "denied", "not authorized", "dismiss", "closed")):
+                    _last_auth_cancelled = True
+            return r.returncode == 0
         except (OSError, subprocess.SubprocessError):
             return False
-    if password:
-        try:
-            return subprocess.run(
-                ["sudo", "-S", "-p", "", "-v"],
-                input=password + "\n", text=True,
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-            ).returncode == 0
-        except (OSError, subprocess.SubprocessError):
-            return False
-    else:
-        try:
-            return subprocess.run(
-                ["sudo", "-v"],
-                stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-            ).returncode == 0
-        except (OSError, subprocess.SubprocessError):
-            return False
+    elif tool == "sudo":
+        if password:
+            try:
+                r = subprocess.run(
+                    ["sudo", "-S", "-p", "", "-v"],
+                    input=password + "\n", text=True,
+                    capture_output=True,
+                )
+                if r.returncode != 0:
+                    _last_auth_cancelled = True
+                return r.returncode == 0
+            except (OSError, subprocess.SubprocessError):
+                return False
+        else:
+            try:
+                r = subprocess.run(
+                    ["sudo", "-v"],
+                    capture_output=True, text=True,
+                )
+                if r.returncode != 0:
+                    _last_auth_cancelled = True
+                return r.returncode == 0
+            except (OSError, subprocess.SubprocessError):
+                return False
+    return False
 
 
 def prime_sudo(password: str) -> bool:
     return prime_privilege(password)
 
 
-def privilege_run(*args: str, non_interactive: bool = True) -> int:
+def privilege_run(*args: str, non_interactive: bool = False) -> int:
+    global _last_auth_cancelled
+    _last_auth_cancelled = False
     try:
         if os.geteuid() == 0:
             return subprocess.run(list(args)).returncode
@@ -99,22 +142,34 @@ def privilege_run(*args: str, non_interactive: bool = True) -> int:
         pass
     tool = get_privilege_tool()
     if tool == "run0":
-        cmd = ["run0"]
+        cmd = ["run0", "--background=", "--pipe"]
         if non_interactive:
             cmd.append("--no-ask-password")
         cmd.extend(args)
         try:
-            return subprocess.run(cmd).returncode
+            r = subprocess.run(cmd, capture_output=True, text=True)
+            if r.returncode != 0:
+                err = f"{r.stderr or ''} {r.stdout or ''}".lower()
+                if any(k in err for k in ("cancel", "denied", "not authorized", "dismiss", "closed")):
+                    _last_auth_cancelled = True
+            return r.returncode
         except (OSError, subprocess.SubprocessError):
             return 1
-    cmd = ["sudo"]
-    if non_interactive:
-        cmd.append("-n")
-    cmd.extend(args)
-    try:
-        return subprocess.run(cmd).returncode
-    except (OSError, subprocess.SubprocessError):
-        return 1
+    elif tool == "sudo":
+        cmd = ["sudo"]
+        if non_interactive:
+            cmd.append("-n")
+        cmd.extend(args)
+        try:
+            r = subprocess.run(cmd, capture_output=True, text=True)
+            if r.returncode != 0:
+                err = f"{r.stderr or ''} {r.stdout or ''}".lower()
+                if any(k in err for k in ("cancel", "denied", "incorrect", "password")):
+                    _last_auth_cancelled = True
+            return r.returncode
+        except (OSError, subprocess.SubprocessError):
+            return 1
+    return 1
 
 
 def sudo_run(*args: str) -> int:
@@ -171,15 +226,15 @@ def _read_requirements() -> list[str] | None:
         return None
 
 
-def ensure_venv() -> bool:
+def ensure_venv(non_interactive: bool = False) -> bool:
     venv_dir = cfg.VENV_DIR
     venv_python = cfg.VENV_PYTHON
 
     if not os.path.isfile(venv_python):
-        privilege_run("mkdir", "-p", venv_dir)
-        if privilege_run(sys.executable, "-m", "venv", "--without-pip", venv_dir) != 0:
+        privilege_run("mkdir", "-p", venv_dir, non_interactive=non_interactive)
+        if privilege_run(sys.executable, "-m", "venv", "--without-pip", venv_dir, non_interactive=non_interactive) != 0:
             return False
-        if privilege_run(venv_python, "-m", "ensurepip", "--upgrade") != 0:
+        if privilege_run(venv_python, "-m", "ensurepip", "--upgrade", non_interactive=non_interactive) != 0:
             return False
 
     reqs = _read_requirements()
@@ -199,7 +254,7 @@ def ensure_venv() -> bool:
 
     if not all_installed:
         if privilege_run(venv_python, "-m", "pip", "install", "--upgrade", "--quiet",
-                         "-r", cfg.REQUIREMENTS_PATH) != 0:
+                         "-r", cfg.REQUIREMENTS_PATH, non_interactive=non_interactive) != 0:
             return False
 
     return True
@@ -215,7 +270,8 @@ def python_bin() -> str:
 
 def manual_start_command() -> str:
     tool = get_privilege_tool()
-    return f"{tool} {python_bin()} {daemon_script()}"
+    prefix = f"{tool} " if tool in ("sudo", "run0") else ""
+    return f"{prefix}{python_bin()} {daemon_script()}"
 
 
 def wait_for_daemon(timeout: float = 10.0, interval: float = 0.3) -> bool:

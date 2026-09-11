@@ -1,6 +1,8 @@
 from __future__ import annotations
 
+import os
 import re
+import shutil
 import webbrowser
 
 from textual import work
@@ -164,7 +166,7 @@ class StalePathModal(ModalScreen):
     @work
     async def _fix(self) -> None:
         import asyncio
-        from Assets.tui.helpers import ensure_sudo
+        from Assets.tui.helpers import ensure_sudo, run_privileged_action
         from Assets.daemon import service
 
         msg = self.query_one("#stale_msg", Static)
@@ -176,10 +178,13 @@ class StalePathModal(ModalScreen):
                        "Settings tab.[/]")
             close.disabled = False
             return
-        result = await asyncio.to_thread(service.regenerate_service)
+        result = await run_privileged_action(self.app, service.regenerate_service)
         if result.get("ok"):
             msg.update("ZenTune was moved since the daemon was installed.\n\n[green]Its "
                        "service file has been updated and the daemon restarted.[/]")
+        elif result.get("cancelled"):
+            msg.update("The daemon's service file is out of date.\n\n"
+                       "[yellow]Authorization was cancelled.[/]")
         else:
             msg.update("The daemon's service file is out of date.\n\n"
                        f"[red]{result.get('error', 'Could not update it.')}[/]")
@@ -350,6 +355,8 @@ class UpdaterModal(ModalScreen):
 
 
 class UpdateProgressModal(ModalScreen):
+    BINDINGS = [("escape", "close", "Close")]
+
     def __init__(self, url: str) -> None:
         super().__init__()
         self._url = url
@@ -367,7 +374,7 @@ class UpdateProgressModal(ModalScreen):
     @work
     async def _run(self) -> None:
         import asyncio
-        from Assets.tui.helpers import ensure_sudo
+        from Assets.tui.helpers import ensure_sudo, run_privileged_action
         from Assets.flows.updater import perform_update
 
         status = self.query_one("#update_status", Static)
@@ -379,9 +386,12 @@ class UpdateProgressModal(ModalScreen):
         def report(msg: str) -> None:
             self.app.call_from_thread(status.update, msg)
 
-        result = await asyncio.to_thread(perform_update, self._url, report)
+        result = await run_privileged_action(self.app, perform_update, self._url, report)
         if result.get("ok"):
             self.app.exit("relaunch")
+        elif result.get("cancelled"):
+            status.update("[yellow]Update cancelled.[/]")
+            self.query_one("#update_close", Button).disabled = False
         else:
             status.update(f"[red]Update failed:[/] {result.get('error', 'unknown error')}")
             self.query_one("#update_close", Button).disabled = False
@@ -389,8 +399,14 @@ class UpdateProgressModal(ModalScreen):
     def on_button_pressed(self, event: Button.Pressed) -> None:
         self.dismiss()
 
+    def action_close(self) -> None:
+        if not self.query_one("#update_close", Button).disabled:
+            self.dismiss()
+
 
 class SudoModal(ModalScreen[bool]):
+    BINDINGS = [("escape", "close", "Close")]
+
     def compose(self) -> ComposeResult:
         with Vertical(id="sudo_dialog"):
             yield Static("Administrator access required", classes="dialog_title")
@@ -426,9 +442,16 @@ class SudoModal(ModalScreen[bool]):
 
     @work(thread=True, exclusive=True, group="sudo")
     def _authenticate(self, password: str) -> None:
-        from Assets.daemon.service import prime_sudo
+        from Assets.daemon.service import is_sudo_installed, prime_sudo
+        if not is_sudo_installed():
+            self.app.call_from_thread(self._not_installed)
+            return
         ok = prime_sudo(password)
         self.app.call_from_thread(self._result, ok)
+
+    def _not_installed(self) -> None:
+        self.query_one("#sudo_error", Static).update("[red]sudo is not installed on this system.[/]")
+        self.query_one("#sudo_ok", Button).disabled = False
 
     def _result(self, ok: bool) -> None:
         if ok:
@@ -440,18 +463,25 @@ class SudoModal(ModalScreen[bool]):
         pw.focus()
         self.query_one("#sudo_ok", Button).disabled = False
 
+    def action_close(self) -> None:
+        self.dismiss(False)
 
-class Run0Modal(ModalScreen[bool]):
+
+class Run0Modal(ModalScreen[object]):
+    BINDINGS = [("escape", "close", "Close")]
+
     def compose(self) -> ComposeResult:
         with Vertical(id="sudo_dialog"):
             yield Static("Administrator access required", classes="dialog_title")
             yield Static(
-                "ZenTune uses systemd run0 for elevated privileges.\n\n"
-                "Select Authenticate to confirm with system authorization (Polkit).",
+                "ZenTune is configured to use systemd run0 for elevated privileges.\n\n"
+                "Polkit will authorize this action. If you prefer to enter your password "
+                "directly in ZenTune, select 'Use sudo'.",
                 id="sudo_desc")
-            yield Static("", id="sudo_error")
             with Horizontal(id="sudo_buttons"):
-                yield Button("Authenticate", id="sudo_ok", variant="primary")
+                yield Button("Continue", id="sudo_ok", variant="primary")
+                if shutil.which("sudo") or os.path.isfile("/usr/bin/sudo"):
+                    yield Button("Use sudo", id="sudo_switch")
                 yield Button("Cancel", id="sudo_cancel")
 
     def on_mount(self) -> None:
@@ -461,28 +491,62 @@ class Run0Modal(ModalScreen[bool]):
         if event.button.id == "sudo_cancel":
             self.dismiss(False)
         elif event.button.id == "sudo_ok":
-            self._submit()
-
-    def _submit(self) -> None:
-        self.query_one("#sudo_error", Static).update("Authenticating…")
-        self.query_one("#sudo_ok", Button).disabled = True
-        self._authenticate()
-
-    @work(exclusive=True, group="sudo")
-    async def _authenticate(self) -> None:
-        from Assets.daemon.service import prime_privilege
-        import asyncio
-        try:
-            with self.app.suspend():
-                ok = await asyncio.to_thread(prime_privilege)
-        except Exception:
-            ok = await asyncio.to_thread(prime_privilege)
-        self._result(ok)
-
-    def _result(self, ok: bool) -> None:
-        if ok:
             self.dismiss(True)
+        elif event.button.id == "sudo_switch":
+            cfg.set_config("Settings", "PrivilegeTool", "sudo")
+            cfg.save()
+            self.dismiss("switch_sudo")
+
+    def action_close(self) -> None:
+        self.dismiss(False)
+
+
+class ImportPresetsModal(ModalScreen[bool]):
+    BINDINGS = [("escape", "close", "Close")]
+
+    def compose(self) -> ComposeResult:
+        with Vertical(id="dialog"):
+            yield Label("Import presets backup", classes="dialog_title")
+            yield Static(
+                "Enter or drag-and-drop the JSON backup file path into this field.\n"
+                "Existing presets will be merged safely.",
+                id="import_help",
+            )
+            yield Input(placeholder="~/zentune_backup.json or drag file here", id="import_path")
+            yield Static("", id="import_error")
+            with Horizontal(id="dialog_buttons"):
+                yield Button("Import", id="import_confirm", variant="primary")
+                yield Button("Cancel", id="import_cancel")
+
+    def on_mount(self) -> None:
+        self.query_one("#import_path", Input).focus()
+
+    def on_input_submitted(self, event: Input.Submitted) -> None:
+        if event.input.id == "import_path":
+            self._do_import()
+
+    def on_button_pressed(self, event: Button.Pressed) -> None:
+        if event.button.id == "import_cancel":
+            self.dismiss(False)
+        elif event.button.id == "import_confirm":
+            self._do_import()
+
+    def _do_import(self) -> None:
+        raw = self.query_one("#import_path", Input).value.strip()
+        cleaned = raw.strip("'\"")
+        if cleaned.startswith("file://"):
+            cleaned = cleaned[7:]
+        cleaned = cleaned.strip("'\"").strip()
+        if not cleaned:
+            self.query_one("#import_error", Static).update("[red]Please enter or drag-and-drop a file path.[/]")
             return
-        self.query_one("#sudo_error", Static).update("[red]Authentication failed or cancelled.[/]")
-        self.query_one("#sudo_ok", Button).disabled = False
-        self.query_one("#sudo_ok", Button).focus()
+        from Assets.tuning import backup
+        ok, msg, _, _ = backup.import_backup(cleaned)
+        if not ok:
+            self.query_one("#import_error", Static).update(f"[red]{msg}[/]")
+            return
+        self.app.notify(msg, title="Restore", severity="information")
+        self.dismiss(True)
+
+    def action_close(self) -> None:
+        self.dismiss(False)

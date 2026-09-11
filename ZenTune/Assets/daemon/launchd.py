@@ -56,21 +56,35 @@ def _launchctl(*args: str) -> int:
 
 def install_service() -> dict:
     if not common.sudo_available():
+        if common.was_auth_cancelled():
+            return {"ok": False, "cancelled": True, "error": "Authorization was cancelled."}
         return {"ok": False, "error": "Administrator access is required."}
     if not common.ensure_venv():
+        if common.was_auth_cancelled():
+            return {"ok": False, "cancelled": True, "error": "Authorization was cancelled."}
         return {"ok": False, "error": "Could not prepare the daemon environment."}
     if not common.sudo_write_file(PLIST_FILE, _render_plist(), ".plist", owner="root:wheel"):
+        if common.was_auth_cancelled():
+            return {"ok": False, "cancelled": True, "error": "Authorization was cancelled."}
         return {"ok": False, "error": "Failed to write the service file."}
     if _launchctl("bootstrap", "system", PLIST_FILE) != 0:
+        if common.was_auth_cancelled():
+            return {"ok": False, "cancelled": True, "error": "Authorization was cancelled."}
         return {"ok": False, "error": "Daemon installed, but the service failed to start."}
     return {"ok": True, "warning": ""}
 
 
 def uninstall_service() -> dict:
     if not common.sudo_available():
+        if common.was_auth_cancelled():
+            return {"ok": False, "cancelled": True, "error": "Authorization was cancelled."}
         return {"ok": False, "error": "Administrator access is required."}
     _launchctl("bootout", f"system/{LABEL}")
+    if common.was_auth_cancelled():
+        return {"ok": False, "cancelled": True, "error": "Authorization was cancelled."}
     common.sudo_run("rm", "-f", PLIST_FILE)
+    if common.was_auth_cancelled():
+        return {"ok": False, "cancelled": True, "error": "Authorization was cancelled."}
     return {"ok": True}
 
 
@@ -90,8 +104,12 @@ def service_enabled() -> bool:
 
 def restart_service() -> dict:
     if not common.sudo_available():
+        if common.was_auth_cancelled():
+            return {"ok": False, "cancelled": True, "error": "Authorization was cancelled."}
         return {"ok": False, "error": "Administrator access is required."}
     if _launchctl("kickstart", "-k", f"system/{LABEL}") != 0:
+        if common.was_auth_cancelled():
+            return {"ok": False, "cancelled": True, "error": "Authorization was cancelled."}
         return {"ok": False, "error": "Failed to restart the service."}
     return {"ok": True}
 
@@ -121,10 +139,18 @@ def service_path_stale() -> bool:
 
 def regenerate_service() -> dict:
     if not common.sudo_available():
+        if common.was_auth_cancelled():
+            return {"ok": False, "cancelled": True, "error": "Authorization was cancelled."}
         return {"ok": False, "error": "Administrator access is required."}
     if not common.sudo_write_file(PLIST_FILE, _render_plist(), ".plist", owner="root:wheel"):
+        if common.was_auth_cancelled():
+            return {"ok": False, "cancelled": True, "error": "Authorization was cancelled."}
         return {"ok": False, "error": "Failed to write the service file."}
     _launchctl("bootout", f"system/{LABEL}")
+    if common.was_auth_cancelled():
+        return {"ok": False, "cancelled": True, "error": "Authorization was cancelled."}
     if _launchctl("bootstrap", "system", PLIST_FILE) != 0:
+        if common.was_auth_cancelled():
+            return {"ok": False, "cancelled": True, "error": "Authorization was cancelled."}
         return {"ok": False, "error": "Service file updated, but the daemon failed to restart."}
     return {"ok": True}

@@ -45,24 +45,48 @@ else
 fi
 
 PRIV_TOOL=""
+SKIP_DEPS=false
 for arg in "$@"; do
     case "$arg" in
         --sudo) PRIV_TOOL="sudo" ;;
         --run0) PRIV_TOOL="run0" ;;
+        --skip-deps) SKIP_DEPS=true ;;
     esac
 done
 
+if [[ -z "$PRIV_TOOL" ]] && ! $IS_MACOS; then
+    for cfg_candidate in "$SRC_DIR/Assets/config.ini" "$LOCAL_SRC_DIR/Assets/config.ini"; do
+        if [[ -f "$cfg_candidate" ]]; then
+            cfg_val="$(awk -F '=' '/^[[:space:]]*PrivilegeTool[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print tolower($2)}' "$cfg_candidate" 2>/dev/null | tail -1)"
+            if [[ "$cfg_val" == "run0" || "$cfg_val" == "sudo" ]]; then
+                PRIV_TOOL="$cfg_val"
+                break
+            fi
+        fi
+    done
+fi
+
 case "$PRIV_TOOL" in
     sudo)
-        command -v sudo &>/dev/null || die "sudo not found (requested via --sudo)."
-        SUDO="sudo"
+        if command -v sudo &>/dev/null; then
+            SUDO="sudo"
+        elif ! $IS_MACOS && command -v run0 &>/dev/null; then
+            warn "sudo not found, falling back to run0."
+            SUDO="run0 --background="
+        else
+            die "sudo not found (requested via --sudo or config)."
+        fi
         ;;
     run0)
         if $IS_MACOS; then
             SUDO="sudo"
+        elif command -v run0 &>/dev/null; then
+            SUDO="run0 --background="
+        elif command -v sudo &>/dev/null; then
+            warn "run0 not found, falling back to sudo."
+            SUDO="sudo"
         else
-            command -v run0 &>/dev/null || die "run0 not found (requested via --run0)."
-            SUDO="run0"
+            die "run0 not found (requested via --run0 or config)."
         fi
         ;;
     *)
@@ -71,12 +95,20 @@ case "$PRIV_TOOL" in
         elif command -v sudo &>/dev/null; then
             SUDO="sudo"
         elif command -v run0 &>/dev/null; then
-            SUDO="run0"
+            SUDO="run0 --background="
         else
             die "Neither sudo nor run0 found. Install one and re-run."
         fi
         ;;
 esac
+
+ensure_privilege() {
+    if [[ "$SUDO" == "sudo" ]]; then
+        $SUDO -v || die "Administrator authorization was cancelled or failed."
+    else
+        $SUDO true || die "Administrator authorization was cancelled or failed."
+    fi
+}
 
 resolve_release_tag() {
     local tag=""
@@ -119,6 +151,10 @@ ensure_python310() {
         return
     fi
 
+    if $SKIP_DEPS; then
+        die "Python 3.10+ is required but not found, and --skip-deps was specified.\nPlease install Python 3.10+ manually and re-run."
+    fi
+
     warn "Python 3.10+ not found, installing..."
     case "$1" in
         macos)
@@ -126,34 +162,34 @@ ensure_python310() {
             ;;
         apt)
             if grep -qi "ubuntu" /etc/os-release 2>/dev/null; then
-                $SUDO apt-get install -y -qq software-properties-common &>/dev/null
-                $SUDO add-apt-repository -y ppa:deadsnakes/ppa &>/dev/null
-                $SUDO apt-get update -qq &>/dev/null
+                $SUDO apt-get install -y -qq software-properties-common >/dev/null
+                $SUDO add-apt-repository -y ppa:deadsnakes/ppa >/dev/null
+                $SUDO apt-get update -qq >/dev/null
             fi
             local best=""
             for v in 3.14 3.13 3.12 3.11 3.10; do
-                if $SUDO apt-get install -y -qq --dry-run "python${v}" "python${v}-venv" &>/dev/null; then
+                if apt-get install -y -qq --dry-run "python${v}" "python${v}-venv" >/dev/null 2>&1; then
                     best="$v"; break
                 fi
             done
             [[ -n "$best" ]] || die "No Python 3.10+ package found in apt repos."
-            $SUDO apt-get install -y -qq "python${best}" "python${best}-venv" &>/dev/null \
+            $SUDO apt-get install -y -qq "python${best}" "python${best}-venv" >/dev/null \
                 || die "Failed to install python${best}."
             ;;
         dnf)
-            $SUDO dnf install -y -q python3 python3-pip &>/dev/null \
+            $SUDO dnf install -y -q python3 python3-pip >/dev/null \
                 || die "Failed to install Python via dnf."
             ;;
         yum)
-            $SUDO yum install -y -q python3 python3-pip &>/dev/null \
+            $SUDO yum install -y -q python3 python3-pip >/dev/null \
                 || die "Failed to install Python via yum."
             ;;
         pacman)
-            $SUDO pacman -Sy --noconfirm --quiet python &>/dev/null \
+            $SUDO pacman -Sy --noconfirm --quiet python >/dev/null \
                 || die "Failed to install Python via pacman."
             ;;
         zypper)
-            $SUDO zypper install -y --quiet python3 python3-pip &>/dev/null \
+            $SUDO zypper install -y --quiet python3 python3-pip >/dev/null \
                 || die "Failed to install Python via zypper."
             ;;
         unknown)
@@ -174,39 +210,130 @@ ensure_python310() {
 }
 
 install_deps() {
+    if $SKIP_DEPS; then
+        info "Skipping package manager dependency installation (--skip-deps)."
+        local missing=()
+        command -v python3 &>/dev/null || missing+=("python3")
+        if ! $LOCAL_MODE; then
+            command -v unzip &>/dev/null || missing+=("unzip")
+            { command -v wget &>/dev/null || command -v curl &>/dev/null; } \
+                || missing+=("wget or curl")
+        fi
+        if [[ ${#missing[@]} -gt 0 ]]; then
+            echo ""
+            warn "Missing required tools with --skip-deps enabled:"
+            for pkg in "${missing[@]}"; do info "  · $pkg"; done
+            echo ""
+            die "Missing required tools. Install them manually or run without --skip-deps."
+        fi
+        ok "Required tools present."
+        return
+    fi
+
+    local py
+    py="$(find_python_executable)"
+    local need_python_venv=true
+    if [[ -n "$py" ]] && "$py" -c "import venv, ensurepip" &>/dev/null; then
+        need_python_venv=false
+    fi
+
+    local need_unzip=true
+    if $LOCAL_MODE || command -v unzip &>/dev/null; then
+        need_unzip=false
+    fi
+
+    local need_downloader=true
+    if $LOCAL_MODE || command -v curl &>/dev/null || command -v wget &>/dev/null; then
+        need_downloader=false
+    fi
+
+    if ! $need_python_venv && ! $need_unzip && ! $need_downloader; then
+        ok "System dependencies already satisfied."
+        return 0
+    fi
+
     info "Installing system dependencies..."
     case "$1" in
         apt)
-            export DEBIAN_FRONTEND=noninteractive
-            $SUDO apt-get update -qq &>/dev/null
-            $SUDO apt-get install -y -qq --no-install-recommends \
-                python3 python3-venv python3-pip \
-                wget unzip curl &>/dev/null
+            local to_install=()
+            if $need_python_venv; then
+                to_install+=("python3-venv" "python3-pip")
+            fi
+            if $need_unzip; then
+                to_install+=("unzip")
+            fi
+            if $need_downloader; then
+                to_install+=("curl" "wget")
+            fi
+            if [[ ${#to_install[@]} -gt 0 ]]; then
+                $SUDO env DEBIAN_FRONTEND=noninteractive apt-get update -qq >/dev/null
+                $SUDO env DEBIAN_FRONTEND=noninteractive apt-get install -y -qq --no-install-recommends "${to_install[@]}" >/dev/null
+            fi
             ;;
         dnf)
-            $SUDO dnf install -y -q \
-                python3 python3-pip \
-                wget unzip curl &>/dev/null
+            local to_install=()
+            if $need_python_venv; then
+                to_install+=("python3-pip")
+            fi
+            if $need_unzip; then
+                to_install+=("unzip")
+            fi
+            if $need_downloader; then
+                to_install+=("curl" "wget")
+            fi
+            if [[ ${#to_install[@]} -gt 0 ]]; then
+                $SUDO dnf install -y -q "${to_install[@]}" >/dev/null
+            fi
             ;;
         yum)
-            $SUDO yum install -y -q \
-                python3 python3-pip \
-                wget unzip curl &>/dev/null
+            local to_install=()
+            if $need_python_venv; then
+                to_install+=("python3-pip")
+            fi
+            if $need_unzip; then
+                to_install+=("unzip")
+            fi
+            if $need_downloader; then
+                to_install+=("curl" "wget")
+            fi
+            if [[ ${#to_install[@]} -gt 0 ]]; then
+                $SUDO yum install -y -q "${to_install[@]}" >/dev/null
+            fi
             ;;
         pacman)
-            $SUDO pacman -Sy --noconfirm --quiet \
-                python python-pip \
-                wget unzip curl &>/dev/null
+            local to_install=()
+            if $need_python_venv; then
+                to_install+=("python" "python-pip")
+            fi
+            if $need_unzip; then
+                to_install+=("unzip")
+            fi
+            if $need_downloader; then
+                to_install+=("curl" "wget")
+            fi
+            if [[ ${#to_install[@]} -gt 0 ]]; then
+                $SUDO pacman -Sy --noconfirm --quiet "${to_install[@]}" >/dev/null
+            fi
             ;;
         zypper)
-            $SUDO zypper install -y --quiet \
-                python3 python3-pip \
-                wget unzip curl &>/dev/null
+            local to_install=()
+            if $need_python_venv; then
+                to_install+=("python3-pip")
+            fi
+            if $need_unzip; then
+                to_install+=("unzip")
+            fi
+            if $need_downloader; then
+                to_install+=("curl" "wget")
+            fi
+            if [[ ${#to_install[@]} -gt 0 ]]; then
+                $SUDO zypper install -y --quiet "${to_install[@]}" >/dev/null
+            fi
             ;;
         macos)
             local missing=()
-            command -v unzip &>/dev/null || missing+=("unzip")
-            command -v curl  &>/dev/null || missing+=("curl")
+            if $need_unzip; then missing+=("unzip"); fi
+            if $need_downloader; then missing+=("curl"); fi
             if [[ ${#missing[@]} -gt 0 ]]; then
                 echo ""
                 warn "Missing required tools. Install them and re-run:"
@@ -218,9 +345,9 @@ install_deps() {
             ;;
         unknown)
             local missing=()
-            command -v unzip     &>/dev/null || missing+=("unzip")
-            { command -v wget &>/dev/null || command -v curl &>/dev/null; } \
-                || missing+=("wget or curl")
+            if $need_python_venv; then missing+=("python3-venv"); fi
+            if $need_unzip; then missing+=("unzip"); fi
+            if $need_downloader; then missing+=("curl or wget"); fi
             if [[ ${#missing[@]} -gt 0 ]]; then
                 echo ""
                 warn "No supported package manager found. Please install the following and re-run:"
@@ -280,7 +407,7 @@ install_files() {
         info "Preserving custom presets."
     fi
 
-    $SUDO rm -rf "$SRC_DIR"
+    rm -rf "$SRC_DIR" 2>/dev/null || $SUDO rm -rf "$SRC_DIR"
     cp -r "$src" "$SRC_DIR"
 
     if [[ -f "$bak/config.ini" ]]; then
@@ -350,14 +477,15 @@ daemon_is_installed() {
 restart_daemon() {
     $HAS_SERVICE_MANAGER || return 0
     info "Restarting daemon..."
+    local tool_name="sudo"; [[ "$SUDO" == run0* ]] && tool_name="run0"
     if $IS_MACOS; then
         $SUDO launchctl kickstart -k "system/${SERVICE_LABEL}" \
             && ok "Daemon restarted." \
-            || warn "Could not restart daemon, run: $SUDO launchctl kickstart -k system/${SERVICE_LABEL}"
+            || warn "Could not restart daemon, run: sudo launchctl kickstart -k system/${SERVICE_LABEL}"
     else
         $SUDO sh -c "systemctl daemon-reload && systemctl restart '$SERVICE_NAME'" \
             && ok "Daemon restarted." \
-            || warn "Could not restart daemon, run: $SUDO systemctl status $SERVICE_NAME"
+            || warn "Could not restart daemon, run: $tool_name systemctl status $SERVICE_NAME"
     fi
 }
 
@@ -406,6 +534,8 @@ uninstall() {
     echo ""
     hr
     echo ""
+
+    ensure_privilege
 
     if $HAS_SERVICE_MANAGER && [[ -f "$SERVICE_FILE" ]]; then
         info "Removing daemon service..."
@@ -460,7 +590,8 @@ run_setup() {
         fi
         info "Start the daemon (needs root) before running the app:"
         echo ""
-        echo -e "    ${_B}$SUDO $VENV_PYTHON $SRC_DIR/Assets/daemon/daemon.py${_R}"
+        local tool_name="sudo"; [[ "$SUDO" == run0* ]] && tool_name="run0"
+        echo -e "    ${_B}$tool_name $VENV_PYTHON $SRC_DIR/Assets/daemon/daemon.py${_R}"
         echo ""
         if ! $IS_MACOS; then
             info "For OpenRC / runit / s6 service examples, see the wiki:"
@@ -471,26 +602,30 @@ run_setup() {
 }
 
 main() {
-    if [[ "${1:-}" == "--local" ]]; then
-        LOCAL_MODE=true
-        shift
-    fi
-
-    case "${1:-}" in
-        --uninstall|-u)
-            uninstall
-            return
-            ;;
-        --help|-h)
-            echo "Usage: bash install.sh [--local] [--uninstall] [--sudo|--run0]"
-            echo "  (no args)      Install or update ZenTune from the latest GitHub release."
-            echo "  --local        Install from this local checkout instead of downloading a release (for testing)."
-            echo "  --uninstall    Remove ZenTune (service, launcher, and files)."
-            echo "  --sudo         Force sudo for privileged commands, even if run0 is also present."
-            echo "  --run0         Force run0 for privileged commands, even if sudo is also present."
-            return
-            ;;
-    esac
+    for arg in "$@"; do
+        case "$arg" in
+            --uninstall|-u)
+                uninstall
+                return
+                ;;
+            --help|-h)
+                echo "Usage: bash install.sh [--local] [--skip-deps] [--uninstall] [--sudo|--run0]"
+                echo "  (no args)      Install or update ZenTune from the latest GitHub release."
+                echo "  --local        Install from this local checkout instead of downloading a release (for testing)."
+                echo "  --skip-deps    Skip package manager dependency installation if already present."
+                echo "  --uninstall    Remove ZenTune (service, launcher, and files)."
+                echo "  --sudo         Force sudo for privileged commands, even if run0 is also present."
+                echo "  --run0         Force run0 for privileged commands, even if sudo is also present."
+                return
+                ;;
+            --local)
+                LOCAL_MODE=true
+                ;;
+            --skip-deps)
+                SKIP_DEPS=true
+                ;;
+        esac
+    done
 
     local tag
     if $LOCAL_MODE; then
@@ -526,6 +661,7 @@ main() {
     hr
     echo ""
 
+    ensure_privilege
     ensure_python310 "$pm"
     install_deps "$pm"
     if ! $LOCAL_MODE; then

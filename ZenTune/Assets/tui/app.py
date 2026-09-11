@@ -222,8 +222,6 @@ class ZenTuneApp(App):
         st = get_client().status()
         self.call_from_thread(self._render_status, st)
 
-    _warned_offline = False
-
     def _render_status(self, st: dict) -> None:
         self._last_status = st
         ok = st.get("ok", False)
@@ -237,12 +235,7 @@ class ZenTuneApp(App):
             in_setup = isinstance(self.screen, SetupWizard)
             line.display = not in_setup
             line.update("[yellow]Daemon offline. Install or start it from the Settings tab.[/]")
-            if not self._warned_offline and not in_setup:
-                self._warned_offline = True
-                self.notify("Install or start it from the Settings tab.",
-                            title="Daemon offline", severity="warning")
             return
-        self._warned_offline = False
         line.display = False
 
     @work(thread=True, exclusive=True, group="startup_rop")

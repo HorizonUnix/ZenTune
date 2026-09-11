@@ -38,6 +38,11 @@ _ASUS_TTP_VALUES = [2, 0, 1]
 ASUS_ECO_CHOICES = ["dGPU On", "dGPU Off (Eco)"]
 ASUS_MUX_CHOICES = ["dGPU (Ultimate)", "Optimus (Hybrid)"]
 CCD_AFFINITY_CHOICES = ["All Cores", "CCD1 Only", "CCD2 Only"]
+EPP_CHOICES = ["Power", "Balance Power", "Balance Performance", "Performance"]
+_EPP_VALUES = ["power", "balance_power", "balance_performance", "performance"]
+CPU_BOOST_CHOICES = ["Disabled", "Enabled"]
+_CPU_BOOST_VALUES = ["0", "1"]
+_CPU_BOOST_PATH = "/sys/devices/system/cpu/cpufreq/boost"
 
 _last_written: dict[str, str] = {}
 
@@ -102,27 +107,213 @@ def tlp_profile_conflict() -> bool:
     return _tlp_conflict
 
 
+_cached_backend: str | None = None
+_cached_backend_time: float = 0.0
+_BACKEND_CACHE_TTL: float = 10.0
+
+
+def is_ppd_active() -> bool:
+    ppctl = shutil.which("powerprofilesctl")
+    if ppctl:
+        try:
+            r = subprocess.run([ppctl, "get"], capture_output=True, text=True, timeout=1.5)
+            if r.returncode == 0 and bool(r.stdout.strip()):
+                return True
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+
+    systemctl = shutil.which("systemctl")
+    if systemctl:
+        try:
+            r = subprocess.run(
+                [systemctl, "is-active", "--quiet", "power-profiles-daemon"],
+                timeout=1.5,
+            )
+            if r.returncode == 0:
+                return True
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+
+    busctl = shutil.which("busctl")
+    if busctl:
+        try:
+            r = subprocess.run(
+                [busctl, "get-property", "net.hadess.PowerProfiles", "/net/hadess/PowerProfiles", "net.hadess.PowerProfiles", "ActiveProfile"],
+                capture_output=True, text=True, timeout=1.5,
+            )
+            if r.returncode == 0 and "s " in r.stdout:
+                return True
+        except (OSError, subprocess.TimeoutExpired):
+            pass
+
+    return False
+
+
+def is_tuned_active() -> bool:
+    tuned = shutil.which("tuned-adm")
+    if not tuned:
+        return False
+    try:
+        r = subprocess.run([tuned, "active"], capture_output=True, text=True, timeout=2.0)
+        return r.returncode == 0 and "Current active profile:" in r.stdout
+    except (OSError, subprocess.TimeoutExpired):
+        return False
+
+
+def get_power_profile_backend(force_refresh: bool = False) -> str:
+    global _cached_backend, _cached_backend_time
+    now = time.monotonic()
+    if not force_refresh and _cached_backend is not None and (now - _cached_backend_time) < _BACKEND_CACHE_TTL:
+        return _cached_backend
+
+    backend = "none"
+    if is_ppd_active():
+        backend = "ppd"
+    elif is_tuned_active():
+        backend = "tuned"
+    elif os.path.exists(PLATFORM_PROFILE):
+        backend = "sysfs"
+
+    _cached_backend = backend
+    _cached_backend_time = now
+    return backend
+
+
 def power_profile_available() -> bool:
-    return (
-        os.path.exists(PLATFORM_PROFILE)
-        or shutil.which("powerprofilesctl") is not None
-        or shutil.which("tuned-adm") is not None
-    )
+    return get_power_profile_backend() != "none"
+
+
+_BACKEND_DISPLAY_NAMES = {
+    "ppd": "power-profiles-daemon",
+    "tuned": "TuneD",
+    "sysfs": "platform_profile",
+}
+
+
+def power_profile_backend_name() -> str | None:
+    return _BACKEND_DISPLAY_NAMES.get(get_power_profile_backend())
+
+
+def get_current_power_profile() -> str | None:
+    backend = get_power_profile_backend()
+    if backend == "ppd":
+        ppctl = shutil.which("powerprofilesctl")
+        if ppctl:
+            try:
+                r = subprocess.run([ppctl, "get"], capture_output=True, text=True, timeout=1.5)
+                if r.returncode == 0 and r.stdout.strip():
+                    return r.stdout.strip()
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+        busctl = shutil.which("busctl")
+        if busctl:
+            try:
+                r = subprocess.run(
+                    [busctl, "get-property", "net.hadess.PowerProfiles", "/net/hadess/PowerProfiles", "net.hadess.PowerProfiles", "ActiveProfile"],
+                    capture_output=True, text=True, timeout=1.5,
+                )
+                if r.returncode == 0 and "s " in r.stdout:
+                    parts = r.stdout.strip().split('"', 2)
+                    if len(parts) >= 2:
+                        return parts[1]
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+    elif backend == "tuned":
+        tuned = shutil.which("tuned-adm")
+        if tuned:
+            try:
+                r = subprocess.run([tuned, "active"], capture_output=True, text=True, timeout=2.0)
+                if r.returncode == 0:
+                    for line in r.stdout.splitlines():
+                        if "Current active profile:" in line:
+                            return line.partition(":")[2].strip()
+            except (OSError, subprocess.TimeoutExpired):
+                pass
+    elif backend == "sysfs":
+        return _read(PLATFORM_PROFILE)
+    return None
 
 
 def set_power_profile(index: int) -> str:
-    if not 0 <= index < len(_SYSFS_PROFILES):
+    if not 0 <= index < len(POWER_PROFILE_CHOICES):
         return f"power-profile -> invalid value {index}"
     label = POWER_PROFILE_CHOICES[index]
 
-    if os.path.exists(PLATFORM_PROFILE):
+    backend = get_power_profile_backend()
+
+    if backend == "ppd":
+        profile = _PPD_PROFILES[index]
+        current = get_current_power_profile()
+        if current == profile or _last_written.get("ppd") == profile:
+            _last_written["ppd"] = profile
+            return f"power-profile -> {label} (power-profiles-daemon, unchanged)"
+
+        ppctl = shutil.which("powerprofilesctl")
+        if ppctl:
+            try:
+                r = subprocess.run([ppctl, "set", profile], capture_output=True, text=True, timeout=5)
+            except (OSError, subprocess.TimeoutExpired):
+                return "power-profile -> powerprofilesctl failed to run"
+            if r.returncode == 0:
+                _last_written["ppd"] = profile
+                time.sleep(0.5)
+                return f"power-profile -> {label} (power-profiles-daemon)"
+            if profile == "performance":
+                try:
+                    r2 = subprocess.run([ppctl, "set", "balanced"], capture_output=True, text=True, timeout=5)
+                    if r2.returncode == 0:
+                        _last_written["ppd"] = "balanced"
+                        time.sleep(0.5)
+                        return f"power-profile -> Balanced (power-profiles-daemon, 'performance' unsupported)"
+                except (OSError, subprocess.TimeoutExpired):
+                    pass
+            return f"power-profile -> power-profiles-daemon rejected: {r.stderr.strip() or 'unknown error'}"
+
+        busctl = shutil.which("busctl")
+        if busctl:
+            try:
+                r = subprocess.run(
+                    ["busctl", "set-property", "net.hadess.PowerProfiles", "/net/hadess/PowerProfiles", "net.hadess.PowerProfiles", "ActiveProfile", "s", profile],
+                    capture_output=True, text=True, timeout=5,
+                )
+            except (OSError, subprocess.TimeoutExpired):
+                return "power-profile -> busctl failed to run"
+            if r.returncode == 0:
+                _last_written["ppd"] = profile
+                time.sleep(0.5)
+                return f"power-profile -> {label} (power-profiles-daemon via busctl)"
+            return f"power-profile -> D-Bus rejected: {r.stderr.strip() or 'unknown error'}"
+
+    elif backend == "tuned":
+        profile = _TUNED_PROFILES[index]
+        current = get_current_power_profile()
+        if current == profile or _last_written.get("tuned") == profile:
+            _last_written["tuned"] = profile
+            return f"power-profile -> {label} (tuned: {profile}, unchanged)"
+
+        tuned = shutil.which("tuned-adm")
+        if tuned:
+            try:
+                r = subprocess.run([tuned, "profile", profile], capture_output=True, text=True, timeout=10)
+            except (OSError, subprocess.TimeoutExpired):
+                return "power-profile -> tuned-adm failed to run"
+            if r.returncode == 0:
+                _last_written["tuned"] = profile
+                time.sleep(0.5)
+                return f"power-profile -> {label} (tuned: {profile})"
+            return f"power-profile -> tuned rejected: {r.stderr.strip() or 'unknown error'}"
+
+    elif backend == "sysfs":
         profile = resolve_profile(_SYSFS_PROFILES[index], _profile_choices())
         if profile is None:
             return f"power-profile -> '{label}' not supported by this firmware"
-        if _last_written.get(PLATFORM_PROFILE) == profile:
+        current = _read(PLATFORM_PROFILE)
+        if current == profile or _last_written.get(PLATFORM_PROFILE) == profile:
+            _last_written[PLATFORM_PROFILE] = profile
             return f"power-profile -> {label} ({profile}, unchanged)"
         if _write(PLATFORM_PROFILE, profile):
             _last_written[PLATFORM_PROFILE] = profile
+            time.sleep(0.5)
             if tlp_profile_conflict():
                 return (
                     f"power-profile -> {label} ({profile}) "
@@ -131,34 +322,6 @@ def set_power_profile(index: int) -> str:
                 )
             return f"power-profile -> {label} ({profile})"
         return f"power-profile -> failed to write {PLATFORM_PROFILE}"
-
-    ppctl = shutil.which("powerprofilesctl")
-    if ppctl:
-        profile = _PPD_PROFILES[index]
-        if _last_written.get("ppd") == profile:
-            return f"power-profile -> {label} (unchanged)"
-        try:
-            r = subprocess.run([ppctl, "set", profile], capture_output=True, text=True, timeout=5)
-        except (OSError, subprocess.TimeoutExpired):
-            return "power-profile -> powerprofilesctl failed to run"
-        if r.returncode == 0:
-            _last_written["ppd"] = profile
-            return f"power-profile -> {label} (power-profiles-daemon)"
-        return f"power-profile -> rejected: {r.stderr.strip() or 'unknown error'}"
-
-    tuned = shutil.which("tuned-adm")
-    if tuned:
-        profile = _TUNED_PROFILES[index]
-        if _last_written.get("tuned") == profile:
-            return f"power-profile -> {label} (unchanged)"
-        try:
-            r = subprocess.run([tuned, "profile", profile], capture_output=True, text=True, timeout=10)
-        except (OSError, subprocess.TimeoutExpired):
-            return "power-profile -> tuned-adm failed to run"
-        if r.returncode == 0:
-            _last_written["tuned"] = profile
-            return f"power-profile -> {label} (tuned: {profile})"
-        return f"power-profile -> tuned rejected: {r.stderr.strip() or 'unknown error'}"
 
     return "power-profile -> no platform_profile, power-profiles-daemon, or tuned on this system"
 
@@ -353,3 +516,54 @@ def set_ccd_affinity(index: int) -> str:
         return f"ccd-affinity -> rejected: {r.stderr.strip() or 'unknown error'}"
     _last_written["ccd"] = cpus
     return f"ccd-affinity -> {label} (user applications pinned to CPUs {cpus})"
+
+
+def _epp_paths() -> list[str]:
+    paths = glob.glob("/sys/devices/system/cpu/cpu*/cpufreq/energy_performance_preference")
+    if not paths:
+        paths = glob.glob("/sys/devices/system/cpu/cpufreq/policy*/energy_performance_preference")
+    return sorted(paths)
+
+
+def epp_available() -> bool:
+    return len(_epp_paths()) > 0
+
+
+def set_epp(index: int) -> str:
+    if not 0 <= index < len(_EPP_VALUES):
+        return f"epp -> invalid value {index}"
+    label = EPP_CHOICES[index]
+    value = _EPP_VALUES[index]
+    paths = _epp_paths()
+    if not paths:
+        return "epp -> energy_performance_preference not supported on this kernel/CPU"
+    if _last_written.get("epp") == value:
+        return f"epp -> {label} (unchanged)"
+    all_ok = True
+    for p in paths:
+        if not _write(p, value):
+            all_ok = False
+    if all_ok:
+        _last_written["epp"] = value
+        return f"epp -> {label}"
+    return f"epp -> failed to write all cores"
+
+
+def cpu_boost_available() -> bool:
+    return os.path.exists(_CPU_BOOST_PATH)
+
+
+def set_cpu_boost(index: int) -> str:
+    if not 0 <= index < len(_CPU_BOOST_VALUES):
+        return f"cpu-boost -> invalid value {index}"
+    label = CPU_BOOST_CHOICES[index]
+    value = _CPU_BOOST_VALUES[index]
+    if not os.path.exists(_CPU_BOOST_PATH):
+        return "cpu-boost -> cpufreq boost not found"
+    if _read(_CPU_BOOST_PATH) == value or _last_written.get(_CPU_BOOST_PATH) == value:
+        _last_written[_CPU_BOOST_PATH] = value
+        return f"cpu-boost -> {label} (unchanged)"
+    if _write(_CPU_BOOST_PATH, value):
+        _last_written[_CPU_BOOST_PATH] = value
+        return f"cpu-boost -> {label}"
+    return f"cpu-boost -> failed to write {_CPU_BOOST_PATH}"

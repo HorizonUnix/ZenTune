@@ -34,13 +34,40 @@ async def ensure_sudo(app) -> bool:
         return True
     tool = get_privilege_tool()
     if tool == "run0":
-        from Assets.tui.modals import Run0Modal
-        return bool(await app.push_screen_wait(Run0Modal()))
-    from Assets.tui.modals import SudoModal
-    return bool(await app.push_screen_wait(SudoModal()))
+        from Assets.tui.modals import Run0Modal, SudoModal
+        res = await app.push_screen_wait(Run0Modal())
+        if res == "switch_sudo":
+            return bool(await app.push_screen_wait(SudoModal()))
+        if not res:
+            app.notify("Action cancelled.", title="Privileges", severity="warning")
+            return False
+        return True
+    if tool == "sudo":
+        from Assets.tui.modals import SudoModal
+        res = bool(await app.push_screen_wait(SudoModal()))
+        if not res:
+            app.notify("Action cancelled.", title="Privileges", severity="warning")
+            return False
+        return True
+    app.notify(
+        "No privilege escalation tool (sudo or run0) is available on this system.\n"
+        "Run ZenTune as root or install sudo/run0.",
+        title="Privileges", severity="error",
+    )
+    return False
 
 
 ensure_privilege = ensure_sudo
+
+
+async def run_privileged_action(app, fn, *args, **kwargs):
+    import asyncio
+    result = await asyncio.to_thread(fn, *args, **kwargs)
+    try:
+        app.refresh()
+    except Exception:
+        pass
+    return result
 
 
 def exclude_adaptive_when_macos(items, key=lambda x: x, excluded="adaptive"):

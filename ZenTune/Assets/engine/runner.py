@@ -153,11 +153,19 @@ def _apply_system(name: str, raw: int, lines: list[str]) -> None:
         lines.append(platformctl.set_asus_mux(raw))
     elif name == "sys-ccd-affinity":
         lines.append(platformctl.set_ccd_affinity(raw))
+    elif name == "sys-epp":
+        lines.append(platformctl.set_epp(raw))
+    elif name == "sys-cpu-boost":
+        lines.append(platformctl.set_cpu_boost(raw))
     else:
         lines.append(f"{name} -> unknown system setting")
 
 
 _CO_ARGS = {"set-coall", "set-coper", "set-cogfx"}
+_APU_SKIN_TEMP_FAMILIES = {
+    "Renoir", "Lucienne", "Cezanne_Barcelo", "VanGogh", "Rembrandt",
+    "Mendocino", "PhoenixPoint", "PhoenixPoint2", "HawkPoint", "HawkPoint2",
+}
 
 
 def apply_args(args_str: str, family: str) -> tuple[str, bool]:
@@ -172,6 +180,8 @@ def apply_args(args_str: str, family: str) -> tuple[str, bool]:
     lines: list[str] = []
     any_rejected = False
     smu_tokens: list[str] = []
+    system_tokens: list[tuple[str, int]] = []
+    nvidia_tokens: list[str] = []
 
     for token in tokens:
         bare = token.lstrip("-")
@@ -179,15 +189,17 @@ def apply_args(args_str: str, family: str) -> tuple[str, bool]:
             continue
         name, sep, val_str = bare.partition("=")
         if name == "nvidia-clocks":
-            _apply_nvidia(val_str, lines)
+            nvidia_tokens.append(val_str)
         elif name.startswith("sys-"):
             try:
                 raw = int(val_str, 0) if sep else 0
             except ValueError:
                 lines.append(f"{name} -> invalid value '{val_str}'")
                 continue
-            _apply_system(name, raw, lines)
+            system_tokens.append((name, raw))
         else:
+            if name == "apu-skin-temp" and family not in _APU_SKIN_TEMP_FAMILIES:
+                continue
             if sep and name not in _CO_ARGS:
                 try:
                     if int(val_str, 0) <= 0:
@@ -195,6 +207,12 @@ def apply_args(args_str: str, family: str) -> tuple[str, bool]:
                 except ValueError:
                     pass
             smu_tokens.append(token)
+
+    for val_str in nvidia_tokens:
+        _apply_nvidia(val_str, lines)
+
+    for name, raw in system_tokens:
+        _apply_system(name, raw, lines)
 
     if smu_tokens:
         results, rejected = apply(" ".join(smu_tokens), family)

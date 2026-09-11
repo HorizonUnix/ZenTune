@@ -6,6 +6,7 @@ from textual.widgets import Button, Static
 
 from Assets.core import config as cfg
 from Assets.core import platform as plat
+from Assets.system import platformctl
 
 
 def _strip(name: str) -> str:
@@ -94,11 +95,15 @@ class StatusTab(VerticalScroll):
             return f"  {label:<12}{value}"
 
         backend = st.get("backend", "?")
+        sys_power = platformctl.power_profile_backend_name()
+        pwr = "AC" if on_ac else "Battery"
+        if sys_power:
+            pwr = f"{pwr} ({sys_power})"
 
         lines = [
             "[b]System[/b]",
             row("Daemon", "[green]Running[/]"),
-            row("Power", "AC" if on_ac else "Battery"),
+            row("Power", pwr),
             row("Backend", backend),
         ]
         lines.append("")

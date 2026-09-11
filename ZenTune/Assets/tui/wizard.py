@@ -119,7 +119,7 @@ class SetupWizard(ModalScreen):
     async def _install_daemon(self) -> None:
         import asyncio
         from Assets.daemon import service
-        from Assets.tui.helpers import ensure_sudo
+        from Assets.tui.helpers import ensure_sudo, run_privileged_action
 
         if not await ensure_sudo(self.app):
             self.query_one("#setup_daemon_status", Static).update(
@@ -127,13 +127,14 @@ class SetupWizard(ModalScreen):
             return
         self.query_one("#setup_install", Button).disabled = True
         self.query_one("#setup_daemon_status", Static).update("Installing daemon…")
-        result = await asyncio.to_thread(service.install_service)
+        result = await run_privileged_action(self.app, service.install_service)
         if result.get("ok"):
             await asyncio.to_thread(service.wait_for_daemon)
         self.query_one("#setup_install", Button).disabled = False
         if not result.get("ok"):
-            self.query_one("#setup_daemon_status", Static).update(
-                f"[red]{result.get('error', 'Installation failed.')}[/]")
+            err = result.get("error", "Installation failed.")
+            color = "yellow" if result.get("cancelled") else "red"
+            self.query_one("#setup_daemon_status", Static).update(f"[{color}]{err}[/]")
             return
         self._refresh_daemon()
 

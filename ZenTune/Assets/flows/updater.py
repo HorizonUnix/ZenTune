@@ -95,9 +95,10 @@ def perform_update(url: str = _STABLE_URL, status=None) -> dict:
             'chmod +x "$3/zentune.py" 2>/dev/null || true; '
             'mv "$1" "$2" && '
             '(mv "$3" "$1" || (mv "$2" "$1" && exit 1)) && '
+            'chmod +x "$1/zentune.py" 2>/dev/null || true; '
             'rm -rf "$2" "$4"'
         )
-        if privilege_run("sh", "-c", swap_script, "--", src_dir, src_bak, inner, new_folder) != 0:
+        if privilege_run("sh", "-c", swap_script, "--", src_dir, src_bak, inner, new_folder, non_interactive=False) != 0:
             raise PermissionError(f"Could not install the new release into {src_dir}.")
 
         launch = os.path.join(src_dir, "zentune.py")
@@ -105,7 +106,7 @@ def perform_update(url: str = _STABLE_URL, status=None) -> dict:
             try:
                 os.chmod(launch, 0o755)
             except OSError:
-                privilege_run("chmod", "+x", launch)
+                pass
 
         new_assets = os.path.join(src_dir, "Assets")
         if os.path.exists(config_bak):

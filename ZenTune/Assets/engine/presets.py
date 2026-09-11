@@ -9,7 +9,7 @@ RYZEN_FAMILY = [
     "Mendocino", "Vermeer", "Cezanne_Barcelo", "Rembrandt", "Raphael",
     "DragonRange", "PhoenixPoint", "PhoenixPoint2", "HawkPoint", "HawkPoint2",
     "SonomaValley", "GraniteRidge", "FireRange", "StrixHalo", "StrixPoint",
-    "KrackanPoint", "KrackanPoint2",
+    "KrackanPoint", "KrackanPoint2", "Medusa1", "Medusa2", "OlympicRidge",
 ]
 
 

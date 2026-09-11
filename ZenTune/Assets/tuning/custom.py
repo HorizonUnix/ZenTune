@@ -137,7 +137,7 @@ FIELD_DEFS: list[dict[str, Any]] = [
     },
     {
         "key": "min_cpuclk", "label": "Soft Minimum CPU Clock", "arg": "--min-cpuclk",
-        "unit": "MHz", "default": 400, "min": 400, "max": 2000, "step": 25,
+        "unit": "MHz", "default": 400, "min": 400, "max": 4200, "step": 25,
         "enabled": False, "section": 7,
         "hint": "Controls the minimum soft clock target of the CPU. This only works when within your APUs specification.",
     },
@@ -185,7 +185,7 @@ FIELD_DEFS: list[dict[str, Any]] = [
     },
     {
         "key": "min_lclk", "label": "Soft Minimum Data Launch Clock", "arg": "--min-lclk",
-        "unit": "MHz", "default": 400, "min": 400, "max": 2000, "step": 25,
+        "unit": "MHz", "default": 400, "min": 400, "max": 4200, "step": 25,
         "enabled": False, "section": 7,
         "hint": "Controls the minimum soft clock target of the Data Launch Clock. This only works when within your APUs specification.",
     },
@@ -352,6 +352,20 @@ _SYS_FIELDS: list[dict[str, Any]] = [
         "choices": ["All Cores", "CCD1 Only", "CCD2 Only"],
         "hint": "Directs threads to selected CCDs, trimming cross-die traffic and fine-tuning performance.",
     },
+    {
+        "key": "epp", "label": "Energy Performance Preference", "arg": "--sys-epp",
+        "unit": "", "default": 2, "min": 0, "max": 3, "step": 1,
+        "enabled": False, "section": SYS_SECTION, "system_check": "epp",
+        "choices": ["Power", "Balance Power", "Balance Performance", "Performance"],
+        "hint": "Controls AMD CPU Energy Performance Preference.",
+    },
+    {
+        "key": "cpu_boost", "label": "CPU Turbo Boost", "arg": "--sys-cpu-boost",
+        "unit": "", "default": 1, "min": 0, "max": 1, "step": 1,
+        "enabled": False, "section": SYS_SECTION, "system_check": "cpu_boost",
+        "choices": ["Disabled", "Enabled"],
+        "hint": "Enables or disables CPU turbo/boost clocks.",
+    },
 ]
 
 for _oc in _OC_FIELDS:
@@ -419,10 +433,6 @@ def _supports_ccd2_apu() -> bool:
 def _supports_ccd2_dt() -> bool:
     cpu = cfg.get("Info", "CPU")
     return "Ryzen 9" in cpu or "Ryzen Threadripper" in cpu
-
-
-def _special_coper_family() -> bool:
-    return cfg.get("Info", "Family") in {"DragonRange", "FireRange", "StrixHalo"}
 
 
 def clamp_field(value: int, fdef: dict) -> int:
@@ -578,6 +588,8 @@ def _system_supported(kind: str) -> bool:
                 "asus_eco": platformctl.asus_eco_available,
                 "asus_mux": platformctl.asus_mux_available,
                 "ccd": platformctl.ccd_affinity_available,
+                "epp": platformctl.epp_available,
+                "cpu_boost": platformctl.cpu_boost_available,
             }
             fn = checks.get(kind)
             _sys_support[kind] = fn() if fn else False
@@ -586,11 +598,19 @@ def _system_supported(kind: str) -> bool:
     return _sys_support[kind]
 
 
+_APU_SKIN_TEMP_FAMILIES = {
+    "Renoir", "Lucienne", "Cezanne_Barcelo", "VanGogh", "Rembrandt",
+    "Mendocino", "PhoenixPoint", "PhoenixPoint2", "HawkPoint", "HawkPoint2",
+}
+
+
 def _supported_field_keys(family: str, fields: list[dict]) -> set[str]:
     from zenmaster import runner
     nv = has_nvidia()
     supported = set()
     for f in fields:
+        if f.get("key") == "apu_skin_temp" and family not in _APU_SKIN_TEMP_FAMILIES:
+            continue
         if f.get("nvidia_only"):
             if nv and (f["key"] != "nv_power_limit" or _nvidia_power_limit_supported()):
                 supported.add(f["key"])
@@ -654,7 +674,9 @@ def _coper_value(f: dict) -> int:
     offset = max(-50, min(30, int(f["value"])))
     magnitude = min(abs(offset), 0xFFFFF)
     encoded = (0x100000 - magnitude) & 0xFFFFF if offset < 0 else magnitude & 0xFFFFF
-    prefix = (((int(f.get("ccd", 0)) << 4) | 0) << 4 | (int(f.get("core", 0)) % 8 & 15)) << 20
+    ccd = int(f.get("ccd", 0))
+    core = int(f.get("core", 0))
+    prefix = (((ccd << 4) | (core // 8 & 15)) << 4 | (core % 8 & 15)) << 20
     return prefix | encoded
 
 
@@ -664,8 +686,14 @@ _OC_NEWER_FAMILIES = {
     "Raphael", "DragonRange", "GraniteRidge", "FireRange",
 }
 
+_OC_RAW_MV_FAMILIES = {
+    "Medusa1", "Medusa2", "OlympicRidge",
+}
+
 
 def _encode_oc_volt(vid: int, family: str) -> int:
+    if family in _OC_RAW_MV_FAMILIES:
+        return vid
     if family in _OC_NEWER_FAMILIES:
         return int((vid - 1125) / 5 + 1200)
     return round((1.55 - vid / 1000) / 0.00625)
@@ -676,7 +704,6 @@ def build_args(fields: list[dict], cpu_type: str = "") -> str:
         cpu_type = cfg.get("Info", "Type")
     is_apu = cpu_type == "Amd_Apu"
     is_dt = cpu_type == "Amd_Desktop_Cpu"
-    use_coper_encode = is_dt or _special_coper_family()
     parts = []
     oc_emitted = False
     nv_enabled = False
@@ -696,20 +723,15 @@ def build_args(fields: list[dict], cpu_type: str = "") -> str:
                 parts.append("--max-performance")
         elif f["key"] == "oc_clk":
             v = f["value"]
-            parts.append(f"--oc-clk={v} --oc-clk={v}")
+            parts.append(f"--oc-clk={v} --oc-clk={v}" if is_dt else f"--oc-clk={v}")
             oc_emitted = True
         elif f["key"] == "oc_volt":
             family = cfg.get("Info", "Family")
             vid = _encode_oc_volt(f["value"], family)
-            parts.append(f"--oc-volt={vid} --oc-volt={vid}")
+            parts.append(f"--oc-volt={vid} --oc-volt={vid}" if is_dt else f"--oc-volt={vid}")
             oc_emitted = True
         elif f["arg"] == "--set-coper":
-            if use_coper_encode:
-                parts.append(f"--set-coper={_coper_value(f)}")
-            else:
-                core = int(f.get("core", 0))
-                encoded = ((core if core < 8 else 7) << 20) | (int(f["value"]) & 0xFFFF)
-                parts.append(f"--set-coper={encoded}")
+            parts.append(f"--set-coper={_coper_value(f)}")
         elif f["key"] == "tctl_temp" and is_apu:
             val = f["value"]
             parts.append(f"--tctl-temp={val}")
@@ -717,7 +739,7 @@ def build_args(fields: list[dict], cpu_type: str = "") -> str:
         else:
             parts.append(f"{f['arg']}={_smu_value(f)}")
     if oc_emitted:
-        parts.append("--enable-oc --enable-oc")
+        parts.append("--enable-oc --enable-oc" if is_dt else "--enable-oc")
     if nv_enabled:
         max_clk = nv_vals.get("nv_max_clk", 4000)
         core = nv_vals.get("nv_core_offset", 0)
@@ -766,7 +788,7 @@ def load_custom_presets() -> list[dict]:
         return []
 
 
-def _save_custom_presets(presets: list[dict]) -> None:
+def save_custom_presets(presets: list[dict]) -> None:
     try:
         cfg.CUSTOM_PRESETS_PATH.parent.mkdir(parents=True, exist_ok=True)
         cfg.atomic_write(str(cfg.CUSTOM_PRESETS_PATH), json.dumps(presets, indent=2))
@@ -847,7 +869,7 @@ def save_preset(base_name: str, fields: list[dict], replace_name: str | None = N
 
     presets = [p for p in load_custom_presets() if p["name"] not in drop]
     presets.append(fields_to_record(base_name, fields))
-    _save_custom_presets(presets)
+    save_custom_presets(presets)
 
     if old_base and old_base != base_name:
         _migrate_preset_refs(old_base, base_name)
@@ -877,7 +899,7 @@ def delete_preset(display_name: str) -> None:
     base = display_name.removesuffix("_custom_preset")
     internal_name = base + "_custom_preset"
     presets = [p for p in load_custom_presets() if p["name"] != base]
-    _save_custom_presets(presets)
+    save_custom_presets(presets)
 
     changed = False
 
