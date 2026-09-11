@@ -453,7 +453,7 @@ install_wrapper() {
 #!/usr/bin/env bash
 exec "$VENV_PYTHON" "$SRC_DIR/zentune.py" "\$@"
 EOF
-    $SUDO sh -c "cp '$tmp' '$BIN_WRAPPER' && chmod +x '$BIN_WRAPPER'"
+    $SUDO sh -c "cp '$tmp' '$BIN_WRAPPER' && chmod 755 '$BIN_WRAPPER'"
     rm -f "$tmp"
     [[ -x "$BIN_WRAPPER" ]] || die "Failed to install launcher at $BIN_WRAPPER"
     ok "Launcher installed: $BIN_WRAPPER"
