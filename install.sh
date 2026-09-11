@@ -54,17 +54,6 @@ for arg in "$@"; do
     esac
 done
 
-if [[ -z "$PRIV_TOOL" ]] && ! $IS_MACOS; then
-    for cfg_candidate in "$SRC_DIR/Assets/config.ini" "$LOCAL_SRC_DIR/Assets/config.ini"; do
-        if [[ -f "$cfg_candidate" ]]; then
-            cfg_val="$(awk -F '=' '/^[[:space:]]*PrivilegeTool[[:space:]]*=/ {gsub(/[[:space:]]/, "", $2); print tolower($2)}' "$cfg_candidate" 2>/dev/null | tail -1)"
-            if [[ "$cfg_val" == "run0" || "$cfg_val" == "sudo" ]]; then
-                PRIV_TOOL="$cfg_val"
-                break
-            fi
-        fi
-    done
-fi
 
 case "$PRIV_TOOL" in
     sudo)
@@ -394,7 +383,7 @@ install_files() {
         [[ -d "$src" ]] || die "Could not find source directory in archive."
     fi
 
-    $SUDO sh -c "mkdir -p '$INSTALL_DIR' && chown '$CURRENT_USER:$CURRENT_GROUP' '$INSTALL_DIR'"
+    $SUDO sh -c "mkdir -p '$INSTALL_DIR' && chown -R '$CURRENT_USER:$CURRENT_GROUP' '$INSTALL_DIR'"
 
     local bak="$TMP_DIR/preserve"
     mkdir -p "$bak"
