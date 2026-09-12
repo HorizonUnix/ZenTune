@@ -162,10 +162,6 @@ def _apply_system(name: str, raw: int, lines: list[str]) -> None:
 
 
 _CO_ARGS = {"set-coall", "set-coper", "set-cogfx"}
-_APU_SKIN_TEMP_FAMILIES = {
-    "Renoir", "Lucienne", "Cezanne_Barcelo", "VanGogh", "Rembrandt",
-    "Mendocino", "PhoenixPoint", "PhoenixPoint2", "HawkPoint", "HawkPoint2",
-}
 
 
 def apply_args(args_str: str, family: str) -> tuple[str, bool]:
@@ -198,8 +194,6 @@ def apply_args(args_str: str, family: str) -> tuple[str, bool]:
                 continue
             system_tokens.append((name, raw))
         else:
-            if name == "apu-skin-temp" and family not in _APU_SKIN_TEMP_FAMILIES:
-                continue
             if sep and name not in _CO_ARGS:
                 try:
                     if int(val_str, 0) <= 0:
@@ -215,15 +209,19 @@ def apply_args(args_str: str, family: str) -> tuple[str, bool]:
         _apply_system(name, raw, lines)
 
     if smu_tokens:
-        results, rejected = apply(" ".join(smu_tokens), family)
-        any_rejected = any_rejected or rejected
-        for r in results:
-            if r["error"]:
-                lines.append(f"{r['arg']} -> {r['error']}")
-            else:
-                lines.append(
-                    f"{r['arg']} [{r['mailbox']} 0x{r['opcode']:02X}] = {r['value']} -> "
-                    f"{status_name(r['status'])}"
-                )
+        try:
+            results, rejected = apply(" ".join(smu_tokens), family)
+            any_rejected = any_rejected or rejected
+            for r in results:
+                if r["error"]:
+                    lines.append(f"{r['arg']} -> {r['error']}")
+                else:
+                    lines.append(
+                        f"{r['arg']} [{r['mailbox']} 0x{r['opcode']:02X}] = {r['value']} -> "
+                        f"{status_name(r['status'])}"
+                    )
+        except Exception as exc:
+            lines.append(f"smu -> error: {exc}")
+            any_rejected = True
 
     return "\n".join(lines) if lines else "(no matching commands for this family)", any_rejected

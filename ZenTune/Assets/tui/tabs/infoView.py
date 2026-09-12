@@ -33,7 +33,18 @@ class HardwareTab(VerticalScroll):
             dev = hw._parse_device_info()
             device = _rows([("Name", dev["name"]), ("Producer", dev["producer"]), ("Model", dev["model"])])
             self.app.call_from_thread(self.query_one("#hw_device", Static).update, device)
-        processor = _rows([
-            ("Processor", cfg.get("Info", "CPU")), ("Codename", cfg.get("Info", "Family")),
-            ("Architecture", cfg.get("Info", "Architecture")), ("Signature", cfg.get("Info", "Signature"))])
+        proc_rows = [
+            ("Processor", cfg.get("Info", "CPU")),
+            ("Codename", cfg.get("Info", "Family")),
+            ("Architecture", cfg.get("Info", "Architecture")),
+            ("Signature", cfg.get("Info", "Signature")),
+        ]
+        try:
+            from zenmaster.smu import get_ccd_count
+            ccds = get_ccd_count()
+            if ccds:
+                proc_rows.append(("CCDs", str(ccds)))
+        except Exception:
+            pass
+        processor = _rows(proc_rows)
         self.app.call_from_thread(self.query_one("#hw_processor", Static).update, processor)

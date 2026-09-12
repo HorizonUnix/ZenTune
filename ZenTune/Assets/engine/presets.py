@@ -4,11 +4,14 @@ from dataclasses import dataclass, asdict
 
 
 RYZEN_FAMILY = [
-    "Unknown", "SummitRidge", "PinnacleRidge", "RavenRidge", "Dali", "Pollock",
-    "Picasso", "FireFlight", "Matisse", "Renoir", "Lucienne", "VanGogh",
-    "Mendocino", "Vermeer", "Cezanne_Barcelo", "Rembrandt", "Raphael",
-    "DragonRange", "PhoenixPoint", "PhoenixPoint2", "HawkPoint", "HawkPoint2",
-    "SonomaValley", "GraniteRidge", "FireRange", "StrixHalo", "StrixPoint",
+    "Unknown",
+    "SummitRidge", "Threadripper", "Naples", "PinnacleRidge", "Colfax",
+    "RavenRidge", "RavenRidge2", "Dali", "Pollock", "Picasso", "FireFlight", "Dhyana",
+    "Rome", "CastlePeak", "Matisse", "Renoir", "Lucienne", "VanGogh", "Mendocino",
+    "Milan", "Chagall", "Vermeer", "Cezanne_Barcelo", "Rembrandt",
+    "Genoa", "Bergamo", "Siena", "StormPeak", "Raphael", "DragonRange",
+    "PhoenixPoint", "PhoenixPoint2", "HawkPoint", "HawkPoint2", "SonomaValley",
+    "Turin", "TurinDense", "GraniteRidge", "FireRange", "StrixHalo", "StrixPoint",
     "KrackanPoint", "KrackanPoint2", "Medusa1", "Medusa2", "OlympicRidge",
 ]
 
@@ -87,10 +90,10 @@ def _variant_preset(variant: str) -> Preset | None:
 def _apu_preset(family: str, cpu_model: str) -> Preset:
     if family in ("DragonRange", "FireRange"):
         return Preset(
-            Eco="--tctl-temp=95 --chtc-temp=95 --stapm-limit=35000 --fast-limit=45000 --stapm-time=64 --slow-limit=35000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
-            Balanced="--tctl-temp=95 --chtc-temp=95 --stapm-limit=65000 --fast-limit=75000 --stapm-time=64 --slow-limit=65000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
-            Performance="--tctl-temp=95 --chtc-temp=95 --stapm-limit=100000 --fast-limit=120000 --stapm-time=64 --slow-limit=100000 --slow-time=128 --vrm-current=240000 --vrmmax-current=240000 --vrmsoc-current=240000 --vrmsocmax-current=240000",
-            Extreme="--tctl-temp=95 --chtc-temp=95 --stapm-limit=125000 --fast-limit=145000 --stapm-time=64 --slow-limit=125000 --slow-time=128 --vrm-current=240000 --vrmmax-current=240000 --vrmsoc-current=240000 --vrmsocmax-current=240000",
+            Eco="--tctl-temp=95 --chtc-temp=95 --stapm-limit=35000 --fast-limit=45000 --stapm-time=64 --slow-limit=35000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000",
+            Balanced="--tctl-temp=95 --chtc-temp=95 --stapm-limit=65000 --fast-limit=75000 --stapm-time=64 --slow-limit=65000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000",
+            Performance="--tctl-temp=95 --chtc-temp=95 --stapm-limit=100000 --fast-limit=120000 --stapm-time=64 --slow-limit=100000 --slow-time=128 --vrm-current=240000 --vrmmax-current=240000",
+            Extreme="--tctl-temp=95 --chtc-temp=95 --stapm-limit=125000 --fast-limit=145000 --stapm-time=64 --slow-limit=125000 --slow-time=128 --vrm-current=240000 --vrmmax-current=240000",
         )
 
     if family == "StrixHalo":
@@ -119,32 +122,41 @@ def _apu_u_e_ce() -> Preset:
     )
 
 
+def _pre_matisse_u_e_ce() -> Preset:
+    return Preset(
+        Eco="--tctl-temp=95 --chtc-temp=95 --stapm-limit=6000 --fast-limit=8000 --stapm-time=64 --slow-limit=6000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+        Balanced="--tctl-temp=95 --chtc-temp=95 --stapm-limit=15000 --fast-limit=18000 --stapm-time=64 --slow-limit=16000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+        Performance="--tctl-temp=95 --chtc-temp=95 --stapm-limit=18000 --fast-limit=20000 --stapm-time=64 --slow-limit=19000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+        Extreme="--tctl-temp=95 --chtc-temp=95 --stapm-limit=28000 --fast-limit=28000 --stapm-time=64 --slow-limit=28000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+    )
+
+
 def _pre_matisse_apu(cpu_model: str) -> Preset:
     if any(s in cpu_model for s in ("U", "e", "Ce")):
-        return _apu_u_e_ce()
+        return _pre_matisse_u_e_ce()
 
     if "H" in cpu_model:
         return Preset(
-            Eco="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=6000 --fast-limit=8000 --stapm-time=64 --slow-limit=6000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
-            Balanced="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=30000 --fast-limit=35000 --stapm-time=64 --slow-limit=33000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
-            Performance="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=35000 --fast-limit=42000 --stapm-time=64 --slow-limit=40000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
-            Extreme="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=56000 --fast-limit=56000 --stapm-time=64 --slow-limit=56000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+            Eco="--tctl-temp=95 --chtc-temp=95 --stapm-limit=6000 --fast-limit=8000 --stapm-time=64 --slow-limit=6000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+            Balanced="--tctl-temp=95 --chtc-temp=95 --stapm-limit=30000 --fast-limit=35000 --stapm-time=64 --slow-limit=33000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+            Performance="--tctl-temp=95 --chtc-temp=95 --stapm-limit=35000 --fast-limit=42000 --stapm-time=64 --slow-limit=40000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+            Extreme="--tctl-temp=95 --chtc-temp=95 --stapm-limit=56000 --fast-limit=56000 --stapm-time=64 --slow-limit=56000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
         )
 
     if "GE" in cpu_model:
         return Preset(
-            Eco="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=15000 --fast-limit=15000 --stapm-time=64 --slow-limit=18000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
-            Balanced="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=45000 --fast-limit=55000 --stapm-time=64 --slow-limit=48000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
-            Performance="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=55000 --fast-limit=65000 --stapm-time=64 --slow-limit=60000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
-            Extreme="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=65000 --fast-limit=80000 --stapm-time=64 --slow-limit=75000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+            Eco="--tctl-temp=95 --chtc-temp=95 --stapm-limit=15000 --fast-limit=15000 --stapm-time=64 --slow-limit=18000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+            Balanced="--tctl-temp=95 --chtc-temp=95 --stapm-limit=45000 --fast-limit=55000 --stapm-time=64 --slow-limit=48000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+            Performance="--tctl-temp=95 --chtc-temp=95 --stapm-limit=55000 --fast-limit=65000 --stapm-time=64 --slow-limit=60000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+            Extreme="--tctl-temp=95 --chtc-temp=95 --stapm-limit=65000 --fast-limit=80000 --stapm-time=64 --slow-limit=75000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
         )
 
     if "G" in cpu_model:
         return Preset(
-            Eco="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=15000 --fast-limit=18000 --stapm-time=64 --slow-limit=18000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
-            Balanced="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=45 --stapm-limit=65000 --fast-limit=75000 --stapm-time=64 --slow-limit=65000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
-            Performance="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=80000 --fast-limit=75000 --stapm-time=64 --slow-limit=75000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
-            Extreme="--tctl-temp=95 --chtc-temp=95 --apu-skin-temp=95 --stapm-limit=85000 --fast-limit=95000 --stapm-time=64 --slow-limit=90000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+            Eco="--tctl-temp=95 --chtc-temp=95 --stapm-limit=15000 --fast-limit=18000 --stapm-time=64 --slow-limit=18000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+            Balanced="--tctl-temp=95 --chtc-temp=95 --stapm-limit=65000 --fast-limit=75000 --stapm-time=64 --slow-limit=65000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+            Performance="--tctl-temp=95 --chtc-temp=95 --stapm-limit=80000 --fast-limit=75000 --stapm-time=64 --slow-limit=75000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
+            Extreme="--tctl-temp=95 --chtc-temp=95 --stapm-limit=85000 --fast-limit=95000 --stapm-time=64 --slow-limit=90000 --slow-time=128 --vrm-current=180000 --vrmmax-current=180000 --vrmsoc-current=180000 --vrmsocmax-current=180000",
         )
 
     return _desktop_standard()

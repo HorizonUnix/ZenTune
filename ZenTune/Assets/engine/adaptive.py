@@ -90,7 +90,7 @@ def curve_optimiser(state, cpu_load, max_co):
     if state.new_co != state.last_co:
         state.last_co = state.new_co
         if state.new_co > 0:
-            return f"--set-coall={0x100000 - state.new_co}"
+            return f"--set-coall=-{state.new_co}"
         return "--set-coall=0"
     return ""
 

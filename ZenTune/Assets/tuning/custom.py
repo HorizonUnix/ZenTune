@@ -119,13 +119,13 @@ FIELD_DEFS: list[dict[str, Any]] = [
     },
     {
         "key": "coall", "label": "All Core Offset", "arg": "--set-coall",
-        "unit": "", "default": 0, "min": -50, "max": 30, "step": 1, "signed_co": True,
+        "unit": "", "default": 0, "min": -50, "max": 30, "step": 1,
         "enabled": False, "section": 5,
         "hint": "Allows control to change the all core Curve Optimiser Frequency/Voltage curve offset",
     },
     {
         "key": "cogfx", "label": "iGPU Offset", "arg": "--set-cogfx",
-        "unit": "", "default": 0, "min": -50, "max": 30, "step": 1, "signed_co": True,
+        "unit": "", "default": 0, "min": -50, "max": 30, "step": 1,
         "enabled": False, "section": 5,
         "hint": "Allows control to change the iGPU Curve Optimiser Frequency/Voltage curve offset",
     },
@@ -224,13 +224,13 @@ FIELD_DEFS_DT: list[dict[str, Any]] = [
     },
     {
         "key": "coall", "label": "All Core Offset", "arg": "--set-coall",
-        "unit": "", "default": 0, "min": -50, "max": 30, "step": 1, "signed_co": True,
+        "unit": "", "default": 0, "min": -50, "max": 30, "step": 1,
         "enabled": False, "section": 3,
         "hint": "Allows control to change the all core Curve Optimiser Frequency/Voltage curve offset",
     },
     {
         "key": "cogfx", "label": "iGPU Offset", "arg": "--set-cogfx",
-        "unit": "", "default": 0, "min": -50, "max": 30, "step": 1, "signed_co": True,
+        "unit": "", "default": 0, "min": -50, "max": 30, "step": 1,
         "enabled": False, "section": 3,
         "hint": "Allows control to change the iGPU Curve Optimiser Frequency/Voltage curve offset",
     },
@@ -598,19 +598,11 @@ def _system_supported(kind: str) -> bool:
     return _sys_support[kind]
 
 
-_APU_SKIN_TEMP_FAMILIES = {
-    "Renoir", "Lucienne", "Cezanne_Barcelo", "VanGogh", "Rembrandt",
-    "Mendocino", "PhoenixPoint", "PhoenixPoint2", "HawkPoint", "HawkPoint2",
-}
-
-
 def _supported_field_keys(family: str, fields: list[dict]) -> set[str]:
     from zenmaster import runner
     nv = has_nvidia()
     supported = set()
     for f in fields:
-        if f.get("key") == "apu_skin_temp" and family not in _APU_SKIN_TEMP_FAMILIES:
-            continue
         if f.get("nvidia_only"):
             if nv and (f["key"] != "nv_power_limit" or _nvidia_power_limit_supported()):
                 supported.add(f["key"])
@@ -665,19 +657,7 @@ def _smu_value(f: dict) -> int:
         return int(val * f["scale"])
     if f.get("unit") in ("W", "A"):
         return val * 1000
-    if f.get("signed_co") and val < 0:
-        return 0x100000 + val
     return val
-
-
-def _coper_value(f: dict) -> int:
-    offset = max(-50, min(30, int(f["value"])))
-    magnitude = min(abs(offset), 0xFFFFF)
-    encoded = (0x100000 - magnitude) & 0xFFFFF if offset < 0 else magnitude & 0xFFFFF
-    ccd = int(f.get("ccd", 0))
-    core = int(f.get("core", 0))
-    prefix = (((ccd << 4) | (core // 8 & 15)) << 4 | (core % 8 & 15)) << 20
-    return prefix | encoded
 
 
 _OC_NEWER_FAMILIES = {
@@ -731,7 +711,7 @@ def build_args(fields: list[dict], cpu_type: str = "") -> str:
             parts.append(f"--oc-volt={vid} --oc-volt={vid}" if is_dt else f"--oc-volt={vid}")
             oc_emitted = True
         elif f["arg"] == "--set-coper":
-            parts.append(f"--set-coper={_coper_value(f)}")
+            parts.append(f"--set-coper={f.get('ccd', 0)}:{f.get('core', 0)}:{f['value']}")
         elif f["key"] == "tctl_temp" and is_apu:
             val = f["value"]
             parts.append(f"--tctl-temp={val}")

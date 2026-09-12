@@ -84,11 +84,11 @@ _MACOS_INSTALL_GUIDE = f"Install guide: {cfg.MACOS_BACKEND_WIKI_URL}"
 
 
 def check_macos_backend() -> str | None:
-    from zenmaster import directhw, iokit
+    from zenmaster import directhw, iopci
 
     if directhw.is_loaded():
         return None
-    if iokit.is_available() and "debug=0x144" in _sysctl_str("kern.bootargs"):
+    if iopci.is_available() and "debug=0x144" in _sysctl_str("kern.bootargs"):
         return None
 
     message = (
