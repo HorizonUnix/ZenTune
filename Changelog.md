@@ -1,3 +1,28 @@
+## [2.1.0]
+
+ZenTune v2.1 introduces native `run0` privilege elevation support alongside `sudo`, preset backup and restore capabilities, CPU energy performance preference (EPP) and boost controls, enhanced power profile daemon handling, and expanded hardware and tuning presets.
+
+### Privilege elevation and run0
+- **run0 support.** ZenTune now natively supports systemd's `run0` Polkit tool alongside `sudo` for daemon management and privileged operations. (Resolves #103)
+- **Elevation tool selection.** Added `--sudo` and `--run0` CLI flags to both `install.sh` and the app launcher to explicitly specify the privilege elevation backend.
+
+### Preset backup and restore
+- **Export and import presets.** Added `ZenTune/Assets/tuning/backup.py` to export custom and adaptive presets into a unified JSON backup file (`zentune_backup.json`), with options to restore or merge presets across installations.
+
+### Platform controls
+- **Energy Performance Preference (EPP).** Added support for configuring CPU EPP (`performance`, `balance_performance`, `balance_power`, `power`) across all active CPU cores.
+- **CPU Boost control.** Added direct toggle for `/sys/devices/system/cpu/cpufreq/boost`.
+- **Power profile daemon handling.** Improved backend prioritization for `power-profiles-daemon` (`powerprofilesctl` and D-Bus `busctl`), `tuned-adm`, and ACPI `platform_profile`, including automatic fallback to `balanced` when `performance` is unsupported by the platform firmware. (Partially resolves #105)
+
+### Hardware and tuning
+- **Streamlined Curve Optimizer & APU checks.** Custom presets now emit `--set-coper={ccd}:{core}:{value}` and signed `--set-coall` offsets directly, removing redundant bitfield packing and validation in ZenTune.
+- **Dynamic CCD count display.** The Hardware tab now displays the active physical CCD count queried from hardware fuses.
+- **Defensive SMU execution.** Runner now catches unexpected backend exceptions to prevent daemon crashes on hardware rejection.
+
+### Installer improvements
+- **Beta release channel.** Added `--beta` flag to `install.sh` to install pre-release builds directly.
+- **Skip package dependencies.** Added `--skip-deps` flag to bypass package manager checks when dependencies are already installed.
+
 ## [2.0.2]
 
 - Added a 5-second post-wake delay for all automations and the reapply loop before executing SMU commands to prevent system hangs and SMU panics, especially on Hackintosh setups.

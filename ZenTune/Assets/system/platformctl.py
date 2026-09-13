@@ -45,6 +45,7 @@ _CPU_BOOST_VALUES = ["0", "1"]
 _CPU_BOOST_PATH = "/sys/devices/system/cpu/cpufreq/boost"
 
 _last_written: dict[str, str] = {}
+_SETTLE_DELAY_S: float = 0.5
 
 
 def _read(path: str) -> str | None:
@@ -69,17 +70,25 @@ def resolve_profile(canonical: str, available: list[str]) -> str | None:
         return canonical
     if canonical in available:
         return canonical
-    synonyms = {
-        "low-power": ["quiet", "balanced"],
-        "quiet": ["low-power"],
-        "balanced": ["balanced-performance"],
-        "balanced-performance": ["balanced"],
-        "performance": ["balanced"],
+    fallbacks: dict[str, list[str]] = {
+        "low-power": ["quiet", "silent", "cool", "battery", "powersave", "balanced"],
+        "quiet": ["low-power", "silent", "cool", "battery", "powersave", "balanced"],
+        "cool": ["quiet", "low-power", "balanced"],
+        "balanced": ["balanced-performance", "normal", "default", "performance", "quiet", "low-power"],
+        "balanced-performance": ["performance", "balanced"],
+        "performance": ["balanced-performance", "turbo", "high-performance", "balanced"],
     }
-    for alt in synonyms.get(canonical, []):
+    for alt in fallbacks.get(canonical, []):
         if alt in available:
             return alt
-    return None
+
+    canon_clean = canonical.lower().replace("-", "").replace("_", "")
+    for choice in available:
+        choice_clean = choice.lower().replace("-", "").replace("_", "")
+        if canon_clean in choice_clean or choice_clean in canon_clean:
+            return choice
+
+    return available[0] if available else None
 
 
 def _profile_choices() -> list[str]:
@@ -136,6 +145,8 @@ def is_ppd_active() -> bool:
 
     busctl = shutil.which("busctl")
     if busctl:
+        if is_tuned_active():
+            return False
         try:
             r = subprocess.run(
                 [busctl, "get-property", "net.hadess.PowerProfiles", "/net/hadess/PowerProfiles", "net.hadess.PowerProfiles", "ActiveProfile"],
@@ -167,10 +178,10 @@ def get_power_profile_backend(force_refresh: bool = False) -> str:
         return _cached_backend
 
     backend = "none"
-    if is_ppd_active():
-        backend = "ppd"
-    elif is_tuned_active():
+    if is_tuned_active():
         backend = "tuned"
+    elif is_ppd_active():
+        backend = "ppd"
     elif os.path.exists(PLATFORM_PROFILE):
         backend = "sysfs"
 
@@ -256,14 +267,14 @@ def set_power_profile(index: int) -> str:
                 return "power-profile -> powerprofilesctl failed to run"
             if r.returncode == 0:
                 _last_written["ppd"] = profile
-                time.sleep(0.5)
+                time.sleep(_SETTLE_DELAY_S)
                 return f"power-profile -> {label} (power-profiles-daemon)"
             if profile == "performance":
                 try:
                     r2 = subprocess.run([ppctl, "set", "balanced"], capture_output=True, text=True, timeout=5)
                     if r2.returncode == 0:
                         _last_written["ppd"] = "balanced"
-                        time.sleep(0.5)
+                        time.sleep(_SETTLE_DELAY_S)
                         return f"power-profile -> Balanced (power-profiles-daemon, 'performance' unsupported)"
                 except (OSError, subprocess.TimeoutExpired):
                     pass
@@ -280,7 +291,7 @@ def set_power_profile(index: int) -> str:
                 return "power-profile -> busctl failed to run"
             if r.returncode == 0:
                 _last_written["ppd"] = profile
-                time.sleep(0.5)
+                time.sleep(_SETTLE_DELAY_S)
                 return f"power-profile -> {label} (power-profiles-daemon via busctl)"
             return f"power-profile -> D-Bus rejected: {r.stderr.strip() or 'unknown error'}"
 
@@ -299,7 +310,7 @@ def set_power_profile(index: int) -> str:
                 return "power-profile -> tuned-adm failed to run"
             if r.returncode == 0:
                 _last_written["tuned"] = profile
-                time.sleep(0.5)
+                time.sleep(_SETTLE_DELAY_S)
                 return f"power-profile -> {label} (tuned: {profile})"
             return f"power-profile -> tuned rejected: {r.stderr.strip() or 'unknown error'}"
 
@@ -313,7 +324,7 @@ def set_power_profile(index: int) -> str:
             return f"power-profile -> {label} ({profile}, unchanged)"
         if _write(PLATFORM_PROFILE, profile):
             _last_written[PLATFORM_PROFILE] = profile
-            time.sleep(0.5)
+            time.sleep(_SETTLE_DELAY_S)
             if tlp_profile_conflict():
                 return (
                     f"power-profile -> {label} ({profile}) "

@@ -8,18 +8,20 @@
 
 ## Overview
 
-ZenTune (formerly UXTU4Linux) is a power management tool for **AMD Ryzen APUs and desktop CPUs** on Linux and macOS. Talks to the CPU through PCI direct access on most systems, or through [ryzen_smu](https://github.com/amkillam/ryzen_smu) when Secure Boot is on. Set power limits, temperature limits, VRM currents, clocks and Curve Optimiser without touching the BIOS. The terminal UI runs as your normal user; a root daemon handles the hardware writes.
+ZenTune (formerly UXTU4Linux) is a power management tool for **AMD Ryzen APUs and desktop CPUs** on Linux and macOS. Talks to the CPU through direct PCI access on most systems, or through [ryzen_smu](https://github.com/amkillam/ryzen_smu) when Secure Boot is enabled. Set power limits, thermal ceilings, VRM current limits, clocks, and Curve Optimizer offsets without entering firmware setup. The terminal UI runs as an unprivileged user; a root background service manages privileged hardware operations via `run0` or `sudo`.
 
-- Built-in Eco / Balance / Performance / Extreme presets for Ryzen APUs, desktop CPUs and Framework Laptops
-- Adaptive Mode (Linux only): tunes power limit, Curve Optimiser and iGPU clocks live from temperature and load; savable presets and auto-start
-- Custom Preset Editor with ~65 parameters on APUs: power/temp limits, VRM currents, clock targets, per-core CO, static OC
-- System settings inside presets: power profile, ASUS performance mode / GPU Eco / MUX, CCD affinity on dual-CCD chips
-- NVIDIA dGPU clock limits and core/mem offsets
-- Home tab with live CPU temp, power, clock and load graphs
-- Automations: switch presets on AC/battery and on resume
-- Reapply loop so other tools can't silently undo your settings
-- Status tab shows which SMU commands were accepted or rejected
-- Built-in updater that preserves your config and custom presets
+- Built-in Eco / Balanced / Performance / Extreme presets for Ryzen APUs, desktop CPUs, and Framework Laptops
+- Adaptive Mode (Linux only): dynamically scales power limits, Curve Optimizer offsets, and iGPU clocks responding live to temperature and compute load
+- Custom Preset Editor with ~65 parameters on APUs: power limits (STAPM/Fast/Slow), thermal targets, VRM currents, per-core Curve Optimizer, and static clocks
+- Platform controls: Energy Performance Preference (EPP), CPU Boost toggle, and power profile daemon integration (`power-profiles-daemon`, `TuneD`, or ACPI fallback)
+- ASUS hardware controls: thermal performance policies, discrete GPU Eco mode, and MUX isolation on supported laptops
+- NVIDIA discrete GPU controls: frequency locks, core clock offsets, memory clock offsets, and power caps via NVML
+- Preset Backup and Restore: unified export and import (`~/zentune_backup.json`) across systems
+- Live sensor telemetry (Linux): Home tab graphs for CPU temperature, package power, core clock, and workload utilization
+- Event-driven automations: automatic preset switching on AC/battery power transitions and post-suspend resume
+- Anti-flap protection and reapply loops to prevent OEM thermal managers from overriding active limits
+- Status and Hardware tabs: live SMU command execution logs, hardware return codes, and physical CCD topology
+- Built-in updater preserving local configuration and custom presets
 
 ---
 
@@ -27,13 +29,13 @@ ZenTune (formerly UXTU4Linux) is a power management tool for **AMD Ryzen APUs an
 
 | Platform | Status |
 |----------|--------|
-| Linux with systemd, Python 3.10+ | Actively supported |
-| Linux without systemd (OpenRC, runit, etc.) | Supported: installer sets everything up, you start the daemon manually |
-| macOS (Hackintosh, AMD CPU) | Supported: tuning, presets and automations work; Adaptive Mode is Linux-only for now |
+| Linux with systemd, Python 3.10+ | Actively supported (`run0` and `sudo` elevation) |
+| Linux without systemd (OpenRC, runit, etc.) | Supported: installer configures dependencies; launch daemon manually |
+| macOS (Hackintosh, AMD Ryzen CPU) | Supported: tuning, presets, and automations; Adaptive Mode and Home tab graphs are Linux-only |
 | Intel | Not supported |
 
 > [!NOTE]
-> **ryzen_smu is only required on Linux when Secure Boot is enabled.** PCI direct access works on most Linux systems without any kernel module, and on macOS the daemon talks to the SMU through [DirectHW](https://github.com/joevt/directhw) or the kext-free IOPCIBridge path instead. If Secure Boot is on, install ryzen_smu ≥ 0.1.7 and enroll the signing key; the [Wiki](../../wiki) has per-distro steps.
+> **ryzen_smu is only required on Linux when Secure Boot is enabled.** Direct PCI access operates without external kernel modules on standard Linux installations. On macOS, the daemon communicates with the SMU via [DirectHW](https://github.com/joevt/directhw) or the kext-free IOPCIBridge path (`debug=0x144`). Home tab sensor graphs and Adaptive Mode are Linux-exclusive. For full platform setup and troubleshooting details, see the **[Wiki](../../wiki)**.
 
 ---
 

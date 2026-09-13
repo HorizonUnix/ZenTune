@@ -30,6 +30,12 @@ def _on_ac_linux() -> bool:
                     pass
             elif ptype == "Battery":
                 try:
+                    with open(f"{base}/scope") as f:
+                        if f.read().strip().lower() == "device":
+                            continue
+                except OSError:
+                    pass
+                try:
                     with open(f"{base}/status") as f:
                         if f.read().strip().lower() == "discharging":
                             battery_discharging = True
