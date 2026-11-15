@@ -2,9 +2,11 @@ from __future__ import annotations
 
 import json
 import logging
+import math
 import threading
 
 from Assets.core import config as cfg
+from Assets.core import platform as plat
 from Assets.daemon.util import _dn, _load_saved_preset, _on_ac, log
 
 
@@ -132,6 +134,31 @@ class CommandsMixin:
                 },
             }
         return status
+
+    def _cmd_pm_sensors(self, _msg: dict) -> dict:
+        if plat.IS_MACOS:
+            return {"ok": True, "pm": None}
+        from zenmaster.smu import active_backend
+        if active_backend() is None:
+            return {"ok": True, "pm": None}
+        from Assets.system import sensors
+        pm = sensors._read_pmtable()
+        if pm is None:
+            return {"ok": True, "pm": None}
+
+        def _finite(val):
+            return val if isinstance(val, (int, float)) and math.isfinite(val) else None
+
+        return {
+            "ok": True,
+            "pm": {
+                "tctl_temp": _finite(getattr(pm, "tctl_temp", None)),
+                "cclk_busy": _finite(getattr(pm, "cclk_busy", None)),
+                "socket_power": _finite(getattr(pm, "socket_power", None)),
+                "stapm_value": _finite(getattr(pm, "stapm_value", None)),
+                "gfx_clk": _finite(getattr(pm, "gfx_clk", None)),
+            },
+        }
 
     def _cmd_apply_saved(self, _msg: dict) -> dict:
         try:

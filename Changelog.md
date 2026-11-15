@@ -1,3 +1,11 @@
+## [2.1.1]
+
+ZenTune v2.1.1 adds daemon-supplemented PM table telemetry for unprivileged TUI sessions, defers telemetry probing during first-run setup and fatal error dialogs, and updates the minimum ZenMaster dependency for safer uninitialized SMU handling.
+
+### Startup and unprivileged telemetry
+- **Deferred telemetry on setup and fatal errors.** `HomeTab` and `HardwareTab` now skip sensor capability probing, graph polling, and `get_ccd_count()` calls while the first-run setup wizard (`_first_run`) or a dependency error modal (`_dep_error`) is active, preventing startup telemetry errors before hardware access is ready. (Resolves #107)
+- **Daemon-backed Home tab graphs.** Added the `pm_sensors` daemon IPC command alongside `pm_available()` and `merge_pm()` in `ZenTune/Assets/system/sensors.py`, allowing unprivileged Linux TUI sessions without direct PM table access to receive finite PM-table metrics from the privileged daemon and dynamically mount missing Home graphs.
+
 ## [2.1.0]
 
 ZenTune v2.1 introduces native `run0` privilege elevation support alongside `sudo`, preset backup and restore capabilities, CPU energy performance preference (EPP) and boost controls, enhanced power profile daemon handling, and expanded hardware and tuning presets.

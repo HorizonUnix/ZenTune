@@ -39,12 +39,18 @@ class HardwareTab(VerticalScroll):
             ("Architecture", cfg.get("Info", "Architecture")),
             ("Signature", cfg.get("Info", "Signature")),
         ]
+        defer = False
         try:
-            from zenmaster.smu import get_ccd_count
-            ccds = get_ccd_count()
-            if ccds:
-                proc_rows.append(("CCDs", str(ccds)))
+            defer = bool(getattr(self.app, "_first_run", False) or getattr(self.app, "_dep_error", None))
         except Exception:
             pass
+        if not defer:
+            try:
+                from zenmaster.smu import get_ccd_count
+                ccds = get_ccd_count()
+                if ccds:
+                    proc_rows.append(("CCDs", str(ccds)))
+            except Exception:
+                pass
         processor = _rows(proc_rows)
         self.app.call_from_thread(self.query_one("#hw_processor", Static).update, processor)

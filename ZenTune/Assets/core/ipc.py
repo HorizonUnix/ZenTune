@@ -110,6 +110,9 @@ class DaemonClient:
     def adaptive_stop(self) -> dict:
         return self._send({"cmd": "adaptive_stop"}) or {"ok": False}
 
+    def pm_sensors(self) -> dict:
+        return self._send({"cmd": "pm_sensors"}) or {"ok": False}
+
 
 _client: DaemonClient | None = None
 _client_lock = threading.Lock()

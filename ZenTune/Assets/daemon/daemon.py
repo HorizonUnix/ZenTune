@@ -73,6 +73,7 @@ class PowerDaemon(CommandsMixin, LoopsMixin, AdaptiveMixin):
             "apply_loop": self._cmd_apply_loop,
             "stop_loop": self._cmd_stop_loop,
             "status": self._cmd_status,
+            "pm_sensors": self._cmd_pm_sensors,
             "apply_saved": self._cmd_apply_saved,
             "reload_config": self._cmd_reload_config,
             "reset_state": self._cmd_reset_state,

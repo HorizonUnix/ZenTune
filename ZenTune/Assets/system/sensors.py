@@ -18,6 +18,7 @@ PROC_CPUINFO = "/proc/cpuinfo"
 
 _cache = {}
 _load_state = {"prev": None}
+_pm_state = {"available": None}
 
 
 @dataclass
@@ -34,6 +35,11 @@ class SensorSample:
 def reset_cache():
     _cache.clear()
     _load_state["prev"] = None
+    _pm_state["available"] = None
+
+
+def pm_available() -> Optional[bool]:
+    return _pm_state["available"]
 
 
 def _read_text(path):
@@ -203,29 +209,44 @@ def _reconcile(trusted, secondary, tolerance, label):
 def _read_pmtable():
     from Assets.core import hardware as hw
     from zenmaster.smu import read_pm_sensors
-    return read_pm_sensors(hw.detected_family())
+    pm = read_pm_sensors(hw.detected_family())
+    _pm_state["available"] = pm is not None
+    return pm
+
+
+def merge_pm(snapshot: SensorSample, pm) -> SensorSample:
+    pm_get = (
+        (lambda _k: None) if pm is None
+        else (pm.get if isinstance(pm, dict) else lambda k: getattr(pm, k, None))
+    )
+    pm_power = pm_get("socket_power")
+    if pm_power is None:
+        pm_power = pm_get("stapm_value")
+    return SensorSample(
+        cpu_temp=_reconcile(snapshot.cpu_temp, pm_get("tctl_temp"), 5.0, "cpu_temp"),
+        cpu_load=_reconcile(snapshot.cpu_load, pm_get("cclk_busy"), 15.0, "cpu_load"),
+        cpu_power=_reconcile(snapshot.cpu_power, pm_power, 5.0, "cpu_power"),
+        cpu_clk=snapshot.cpu_clk,
+        igpu_load=snapshot.igpu_load,
+        igpu_clk=_reconcile(snapshot.igpu_clk, pm_get("gfx_clk"), 200.0, "igpu_clk"),
+        mem_clk=snapshot.mem_clk,
+    )
 
 
 def sample():
     if plat.IS_MACOS:
         return SensorSample()
     pm = _read_pmtable()
-    temp = _reconcile(_cpu_temp(), pm.tctl_temp if pm else None, 5.0, "cpu_temp")
-    load = _reconcile(_cpu_load(), pm.cclk_busy if pm else None, 15.0, "cpu_load")
-    pm_power = None
-    if pm is not None:
-        pm_power = pm.socket_power if pm.socket_power is not None else pm.stapm_value
-    power = _reconcile(_cpu_power(), pm_power, 5.0, "cpu_power")
-    igpu_clk = _reconcile(_igpu_clk(), pm.gfx_clk if pm else None, 200.0, "igpu_clk")
-    return SensorSample(
-        cpu_temp=temp,
-        cpu_load=load,
-        cpu_power=power,
+    base = SensorSample(
+        cpu_temp=_cpu_temp(),
+        cpu_load=_cpu_load(),
+        cpu_power=_cpu_power(),
         cpu_clk=_cpu_clk(),
         igpu_load=_igpu_load(),
-        igpu_clk=igpu_clk,
+        igpu_clk=_igpu_clk(),
         mem_clk=_mem_clk(),
     )
+    return merge_pm(base, pm)
 
 
 def capabilities():
